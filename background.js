@@ -32,7 +32,7 @@ async function tabCleanUp(){
 				try {
 					let mightHaveUserInput = await browser.tabs.executeScript(tab.id, {
 						code: `(function(){
-					let els = document.querySelectorAll('input');
+					let els = document.querySelectorAll('input[type="text"],input[type="password"]');
 					for(const el of els) {
 						console.log(JSON.stringify(el.classList), el.value);
 						if(el.type !== 'hidden' && el.style.display !== 'none' && typeof el.value === 'string' && el.value !== ''){
