@@ -12,7 +12,11 @@
   "name": "auto-close-tabs",
   "permissions": [
     "tabs",
+    "storage",
     "<all_urls>"
   ],
-  "version": "1.1.3"
+  "options_ui": {
+    "page": "options.html"
+  },
+  "version": "1.2.3"
 }
