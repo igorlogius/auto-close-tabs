@@ -12,6 +12,7 @@ async function tabCleanUp(){
 		highlighted: false, // ignnore highlighted
 		pinned: false, // ignore pinned
 	});
+	if(tabs.length < 8) {return;}
 
 	// check idle time
 	const epoch_now = new Date().getTime();
