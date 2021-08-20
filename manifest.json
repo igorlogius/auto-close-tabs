@@ -1,0 +1,18 @@
+{
+  "author": "igorlogius",
+  "background": {
+    "scripts": [
+      "background.js"
+    ]
+  },
+  "description": "auto closes tabs under certain conditions",
+  "icons": {
+  },
+  "manifest_version": 2,
+  "name": "auto-close-tabs",
+  "permissions": [
+    "tabs",
+    "<all_urls>"
+  ],
+  "version": "0.1.0"
+}
