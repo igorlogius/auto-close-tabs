@@ -5,11 +5,11 @@
       "background.js"
     ]
   },
-  "description": "auto closes tabs under certain conditions",
+  "description": "Automatically closes tabs under certain conditions",
   "icons": {
   },
   "manifest_version": 2,
-  "name": "auto-close-tabs",
+  "name": "Auto Close Tabs",
   "permissions": [
     "tabs",
     "storage",
