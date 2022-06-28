@@ -1,6 +1,8 @@
+/* global browser */
+
 const temporary = browser.runtime.id.endsWith('@temporary-addon'); // debugging?
-const manifest = browser.runtime.getManifest();
-const extname = manifest.name;
+//const manifest = browser.runtime.getManifest();
+//const extname = manifest.name;
 
 async function getFromStorage(storeid,fallback) {
 	return (await (async () => {
@@ -10,7 +12,7 @@ async function getFromStorage(storeid,fallback) {
 			//console.log(tmp);
 			if (typeof tmp[storeid] !== 'undefined'){
 				return tmp[storeid];
-				
+
 			}
 		}catch(e){
 			console.error(e);
@@ -23,11 +25,11 @@ async function tabCleanUp(){
 
 	// get non active, hidden, audible, highlighted or pinned tabs
 	const tabs = await browser.tabs.query({
-		active: false,  
-		hidden: false,  
-		audible: false, 
-		highlighted: false, 
-		pinned: false, 
+		active: false,
+		hidden: false,
+		audible: false,
+		highlighted: false,
+		pinned: false,
 	});
 
 
@@ -37,7 +39,7 @@ async function tabCleanUp(){
 	if(tabs.length > closeThreshold) {
 
 		let nb_of_tabs_to_close = tabs.length - closeThreshold;
-			
+
 		if(nb_of_tabs_to_close < 1) { return; }
 
 		// check idle time
@@ -63,13 +65,13 @@ async function tabCleanUp(){
 						// check if tab contains potential text fields with user input
 						// exclude hidden and non visible stuff
 						let mightHaveUserInput = await browser.tabs.executeScript(tab.id, {
-							code: 
+							code:
 							`(function(){
 								let els = document.querySelectorAll('input[type="text"],input[type="password"]');
 								for(const el of els) {
-									if(         el.type !== 'hidden' && 
-									   el.style.display !== 'none'   && 
-									    typeof el.value === 'string' && 
+									if(         el.type !== 'hidden' &&
+									   el.style.display !== 'none'   &&
+									    typeof el.value === 'string' &&
 										   el.value !== ''
 									){
 										return true;
@@ -77,8 +79,8 @@ async function tabCleanUp(){
 								}
 								els = document.querySelectorAll('textarea');
 								for(const el of els) {
-									if( el.style.display !== 'none'   && 
-									     typeof el.value === 'string' && 
+									if( el.style.display !== 'none'   &&
+									     typeof el.value === 'string' &&
 										    el.value !== ''
 									){
 										return true;
@@ -103,6 +105,7 @@ async function tabCleanUp(){
 	}
 }
 
+//console.debug('temporary', temporary);
 setInterval(tabCleanUp, (temporary?5000:3*60*1000)); // check every 5 seconds in debug, else every 3 minutes
 
 
