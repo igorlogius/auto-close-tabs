@@ -7,6 +7,7 @@
   },
   "description": "Automatically closes tabs under certain conditions",
   "icons": {
+   "256": "icon.png" 
   },
   "manifest_version": 2,
   "name": "Auto Close Tabs",
