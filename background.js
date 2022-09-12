@@ -50,6 +50,8 @@ async function tabCleanUp(){
 
 		tabs.sort((a,b) => {a.lastAccessed - b.lastAccessed});
 
+        const saveFolder = await getFromStorage('saveFolder','');
+
 		for(const tab of tabs) {
 
 			if(nb_of_tabs_to_close < 1) { break; }
@@ -92,16 +94,29 @@ async function tabCleanUp(){
 						mightHaveUserInput = mightHaveUserInput[0];
 
 						if(!mightHaveUserInput){
+                            try {
+                                console.log('saveFolder', saveFolder);
+                            if(typeof saveFolder === 'string' && saveFolder !== ''){
+                                let createdetails = {
+                                    title: tab.title,
+                                    url: tab.url,
+                                    parentId: saveFolder
+                                }
+                                browser.bookmarks.create(createdetails);
+                            }
+                            }catch(e) {
+                                console.error(e);
+                            }
 							await browser.tabs.remove(tab.id);
 						}
 					}catch(e){
-						console.error(e);
+						console.error(e, tab.url);
 					}
 				}else{
 					await browser.tabs.remove(tab.id);
 				}
 			}
-		}
+		} // for tabs
 	}
 }
 
