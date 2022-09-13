@@ -11,6 +11,7 @@
   "manifest_version": 2,
   "name": "Auto Close Tabs",
   "permissions": [
+    "menus",
     "tabs",
     "storage",
     "<all_urls>"
@@ -21,5 +22,5 @@
   "options_ui": {
     "page": "options.html"
   },
-  "version": "1.3.7"
+  "version": "1.4.7"
 }

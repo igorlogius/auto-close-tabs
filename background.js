@@ -4,6 +4,8 @@ const temporary = browser.runtime.id.endsWith('@temporary-addon'); // debugging?
 //const manifest = browser.runtime.getManifest();
 //const extname = manifest.name;
 
+const excluded_tabs = new Set();
+
 async function getFromStorage(storeid,fallback) {
 	return (await (async () => {
 		try {
@@ -24,13 +26,13 @@ async function getFromStorage(storeid,fallback) {
 async function tabCleanUp(){
 
 	// get non active, hidden, audible, highlighted or pinned tabs
-	const tabs = await browser.tabs.query({
+	const tabs = (await browser.tabs.query({
 		active: false,
 		hidden: false,
 		audible: false,
 		highlighted: false,
 		pinned: false,
-	});
+	})).filter( t => (!excluded_tabs.has(t.id)) );
 
 
 	const closeThreshold = await getFromStorage('closeThreshold', 7)
@@ -123,4 +125,30 @@ async function tabCleanUp(){
 //console.debug('temporary', temporary);
 setInterval(tabCleanUp, (temporary?5000:3*60*1000)); // check every 5 seconds in debug, else every 3 minutes
 
+
+browser.menus.create({
+	title: "Exclude",
+	contexts: ["tab"],
+	onclick: async (/*info ,tab*/) => {
+	    const tabs = (await browser.tabs.query({highlighted:true, currentWindow: true, hidden: false}));
+        for(const t of tabs){
+            if(!excluded_tabs.has(t.id)){
+                excluded_tabs.add(t.id);
+            }
+        }
+	}
+});
+
+browser.menus.create({
+	title: "Include",
+	contexts: ["tab"],
+	onclick: async (/*info, tab*/) => {
+	    const tabs = (await browser.tabs.query({highlighted:true, currentWindow: true, hidden: false}));
+        for(const t of tabs){
+            if(excluded_tabs.has(t.id)){
+                excluded_tabs.delete(t.id);
+            }
+        }
+	}
+});
 
