@@ -66,7 +66,7 @@ async function onLoad(){
         console.error(e);
     }
 
-[ "saveFolder", "closeThreshold","minIdleTime" ].map( (id) => {
+[ "onlyClosePrivateTabs", "saveFolder", "closeThreshold","minIdleTime" ].map( (id) => {
 
 	browser.storage.local.get(id).then( (obj) => {
 

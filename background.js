@@ -6,37 +6,34 @@ const temporary = browser.runtime.id.endsWith('@temporary-addon'); // debugging?
 
 const excluded_tabs = new Set();
 
-async function getFromStorage(storeid,fallback) {
-	return (await (async () => {
-		try {
-			//console.log('storeid', storeid)
-			let tmp = await browser.storage.local.get(storeid);
-			//console.log(tmp);
-			if (typeof tmp[storeid] !== 'undefined'){
-				return tmp[storeid];
-
-			}
-		}catch(e){
-			console.error(e);
-		}
-		return (fallback)?fallback:undefined;
-	})());
+async function getFromStorage(type, id, fallback) {
+    let tmp = await browser.storage.local.get(id);
+    return (typeof tmp[id] === type) ? tmp[id] : fallback;
 }
+
+
 
 async function tabCleanUp(){
 
-	// get non active, hidden, audible, highlighted or pinned tabs
-	const tabs = (await browser.tabs.query({
+	const onlyClosePrivateTabs = await getFromStorage('boolean','onlyClosePrivateTabs', false)
+
+	const qryobj =  {
 		active: false,
 		hidden: false,
 		audible: false,
 		highlighted: false,
-		pinned: false,
-	})).filter( t => (!excluded_tabs.has(t.id)) );
+		pinned: false
+	};
+
+	// get non active, hidden, audible, highlighted or pinned tabs
+	let tabs = (await browser.tabs.query(qryobj)).filter( t => (!excluded_tabs.has(t.id)) );
 
 
-	const closeThreshold = await getFromStorage('closeThreshold', 7)
-	//console.log('closeThreshold', closeThreshold);
+	if(onlyClosePrivateTabs){
+		tabs = tabs.filter( t => t.incognito );
+	}
+
+	const closeThreshold = await getFromStorage('number','closeThreshold', 7)
 
 	if(tabs.length > closeThreshold) {
 
@@ -46,13 +43,12 @@ async function tabCleanUp(){
 
 		// check idle time
 		const epoch_now = new Date().getTime();
-		const minIdleTime = await getFromStorage('minIdleTime', 1000*60*15)
+		const minIdleTime = await getFromStorage('number', 'minIdleTime', 1000*60*15)
 
-		//console.log('minIdleTime', minIdleTime);
 
 		tabs.sort((a,b) => {a.lastAccessed - b.lastAccessed});
 
-        const saveFolder = await getFromStorage('saveFolder','');
+        const saveFolder = await getFromStorage('string','saveFolder','');
 
 		for(const tab of tabs) {
 
@@ -97,15 +93,14 @@ async function tabCleanUp(){
 
 						if(!mightHaveUserInput){
                             try {
-                                console.log('saveFolder', saveFolder);
-                            if(typeof saveFolder === 'string' && saveFolder !== ''){
-                                let createdetails = {
-                                    title: tab.title,
-                                    url: tab.url,
-                                    parentId: saveFolder
-                                }
-                                browser.bookmarks.create(createdetails);
-                            }
+				    if(typeof saveFolder === 'string' && saveFolder !== ''){
+					let createdetails = {
+					    title: tab.title,
+					    url: tab.url,
+					    parentId: saveFolder
+					}
+					browser.bookmarks.create(createdetails);
+				    }
                             }catch(e) {
                                 console.error(e);
                             }
@@ -122,7 +117,6 @@ async function tabCleanUp(){
 	}
 }
 
-//console.debug('temporary', temporary);
 setInterval(tabCleanUp, (temporary?5000:3*60*1000)); // check every 5 seconds in debug, else every 3 minutes
 
 

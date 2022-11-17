@@ -5,8 +5,9 @@
   <title>options</title>
 </head>
 <body>
-	<span><input type="number" id="closeThreshold" value="7" min="1" /> define the number of tabs to be keeped open permanently</span>
+	<span><input type="number" id="closeThreshold" value="7" min="0" /> define the number of tabs to be keeped open permanently</span>
 	<span><input type="number" id="minIdleTime" value="900000" min="6000" /> define the amount of time in milliseconds until a tab is marked as idle</span>
+	<span><input type="checkbox" id="onlyClosePrivateTabs" /> only close private tabs (requires: "Run in Private Window" permission)</span>
         <select id="saveFolder">
             <option value='' >Select Bookmark Folder to save closed tabs</option>
         </select>

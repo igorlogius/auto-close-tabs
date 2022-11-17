@@ -11,16 +11,14 @@
   "manifest_version": 2,
   "name": "Auto Close Tabs",
   "permissions": [
+    "bookmarks",
     "menus",
     "tabs",
     "storage",
     "<all_urls>"
   ],
-  "optional_permissions": [
-    "bookmarks"
-  ],
   "options_ui": {
     "page": "options.html"
   },
-  "version": "1.4.7"
+  "version": "1.5.7"
 }
