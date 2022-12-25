@@ -5,13 +5,16 @@ const temporary = browser.runtime.id.endsWith('@temporary-addon'); // debugging?
 //const extname = manifest.name;
 
 const excluded_tabs = new Set();
+const excluded_windows = new Set();
+
+// default state toolbar button/icon
+browser.browserAction.setBadgeText({text:'On'});
+browser.browserAction.setBadgeBackgroundColor({color:'green'});
 
 async function getFromStorage(type, id, fallback) {
     let tmp = await browser.storage.local.get(id);
     return (typeof tmp[id] === type) ? tmp[id] : fallback;
 }
-
-
 
 async function tabCleanUp(){
 
@@ -25,9 +28,9 @@ async function tabCleanUp(){
 		pinned: false
 	};
 
-	// get non active, hidden, audible, highlighted or pinned tabs
-	let tabs = (await browser.tabs.query(qryobj)).filter( t => (!excluded_tabs.has(t.id)) );
-
+	// get non active, hidden, audible, highlighted or pinned tabs 
+	// which are not excluded or in an excluded Window
+	let tabs = (await browser.tabs.query(qryobj)).filter( t => (!excluded_tabs.has(t.id) && !excluded_windows.has(t.windowId)) );
 
 	if(onlyClosePrivateTabs){
 		tabs = tabs.filter( t => t.incognito );
@@ -144,5 +147,42 @@ browser.menus.create({
             }
         }
 	}
+});
+
+// exlcude Window
+async function BAonClicked(tab) {
+	if(excluded_windows.has(tab.windowId)){
+		excluded_windows.delete(tab.windowId);
+		browser.browserAction.setBadgeText({text:'On', windowId: tab.windowId});
+		browser.browserAction.setBadgeBackgroundColor({color:'green', windowId: tab.windowId});
+	}else{
+		excluded_windows.add(tab.windowId);
+		browser.browserAction.setBadgeText({text:'Off',windowId: tab.windowId});
+		browser.browserAction.setBadgeBackgroundColor({color:'red', windowId: tab.windowId});
+	}
+}
+
+browser.browserAction.onClicked.addListener(BAonClicked);
+
+
+function onTabRemoved(tabId, removeInfo) {
+	/*
+  console.log(`Tab: ${tabId} is closing`);
+  console.log(`Window ID: ${removeInfo.windowId}`);
+  console.log(`Window is closing: ${removeInfo.isWindowClosing}`);
+  */
+
+            if(excluded_tabs.has(tabId)){
+                excluded_tabs.delete(tabId);
+            }
+}
+
+browser.tabs.onRemoved.addListener(onTabRemoved);
+
+browser.windows.onRemoved.addListener((windowId) => {
+  //console.log(`Closed window: ${windowId}`);
+            if(excluded_windows.has(windowId)){
+                excluded_windows.delete(windowId);
+            }
 });
 

@@ -5,6 +5,8 @@
       "background.js"
     ]
   },
+  "browser_action": {
+  },
   "icons": {
    "256": "icon.png" 
   },
@@ -20,5 +22,5 @@
   "options_ui": {
     "page": "options.html"
   },
-  "version": "1.5.7"
+  "version": "1.6.7"
 }
