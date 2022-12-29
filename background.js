@@ -16,6 +16,37 @@ async function getFromStorage(type, id, fallback) {
     return (typeof tmp[id] === type) ? tmp[id] : fallback;
 }
 
+async function isWhitelisted(url){
+
+    const selectors = await ((async () => {
+        try {
+            const tmp = await browser.storage.local.get('selectors');
+            if(typeof tmp['selectors'] !== 'undefined') {
+                return tmp['selectors'];
+            }
+        }catch(e){
+            console.error(e);
+        }
+        return [];
+    })());
+
+    for(const selector of selectors) {
+        try {
+            if(    typeof selector.activ === 'boolean'
+                && selector.activ === true
+                && typeof selector.url_regex === 'string'
+                && selector.url_regex !== ''
+                && (new RegExp(selector.url_regex)).test(url)
+            ){
+                return true;
+            }
+        }catch(e){
+            console.error(e);
+        }
+    }
+    return false;
+}
+
 async function tabCleanUp(){
 
 	const onlyClosePrivateTabs = await getFromStorage('boolean','onlyClosePrivateTabs', false)
@@ -30,7 +61,8 @@ async function tabCleanUp(){
 
 	// get non active, hidden, audible, highlighted or pinned tabs 
 	// which are not excluded or in an excluded Window
-	let tabs = (await browser.tabs.query(qryobj)).filter( t => (!excluded_tabs.has(t.id) && !excluded_windows.has(t.windowId)) );
+	// or which match a whitelist expression
+	let tabs = (await browser.tabs.query(qryobj)).filter( async (t) => { return  (!excluded_tabs.has(t.id) && !excluded_windows.has(t.windowId) && !(await isWhitelisted(t.url))); } );
 
 	if(onlyClosePrivateTabs){
 		tabs = tabs.filter( t => t.incognito );
@@ -166,12 +198,6 @@ browser.browserAction.onClicked.addListener(BAonClicked);
 
 
 function onTabRemoved(tabId, removeInfo) {
-	/*
-  console.log(`Tab: ${tabId} is closing`);
-  console.log(`Window ID: ${removeInfo.windowId}`);
-  console.log(`Window is closing: ${removeInfo.isWindowClosing}`);
-  */
-
             if(excluded_tabs.has(tabId)){
                 excluded_tabs.delete(tabId);
             }
@@ -180,7 +206,6 @@ function onTabRemoved(tabId, removeInfo) {
 browser.tabs.onRemoved.addListener(onTabRemoved);
 
 browser.windows.onRemoved.addListener((windowId) => {
-  //console.log(`Closed window: ${windowId}`);
             if(excluded_windows.has(windowId)){
                 excluded_windows.delete(windowId);
             }
