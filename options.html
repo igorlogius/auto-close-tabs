@@ -5,41 +5,45 @@
   <title>options</title>
 </head>
 <body>
-	 <fieldset>
-	<span><input type="number" id="closeThreshold" value="7" min="0" /> define the number of tabs to be keeped open permanently</span>
-    </fieldset>
-	 <fieldset>
-	<span><input type="number" id="minIdleTime" value="900000" min="6000" /> define the amount of time in milliseconds until a tab is marked as idle</span>
-    </fieldset>
-	 <fieldset>
-	<span><input type="checkbox" id="onlyClosePrivateTabs" /> only close private tabs (requires: "Run in Private Window" permission)</span>
-    </fieldset>
-	 <fieldset>
-        <select id="saveFolder">
-            <option value='' >Select Bookmark Folder to save closed tabs</option>
-        </select>
-    </fieldset>
-
-	 <fieldset>
-        <legend>Whitelist</legend>
-    	<p>Ignore Tabs with URLs matching the following Regular Expressions</p>
-	<form id="mainForm" accept-charset="utf-8">
-		<input type="submit" value="Save Changes" />
-		<input id="impbtn_wrapper" type="button" name="impbtn" value="Import Matchers" />
-		<input id="impbtn" type="file" name="impbtn" value="" style="display:none" />
-		<input id="expbtn" type="button" name="impbtn" value="Export Matchers" />
-		<table id="mainTable" border=1 style="width:100%;" >
-            <thead>
-                <th>Enable</th>
-                <th>Regular Expression Matchers</th>
-                <th>Actions</th>
-            </thead>
-			<tbody id='mainTableBody' />
-		</table>
-		<div><b>Note:</b> After editing or deleting entries click "Save Changes" to make the changes persistent</div>
-	</form>
-    </fieldset>
-
+	<fieldset>
+		<legend>Minimal number of tabs to always keep open (by last access time)</legend>
+		<input type="number" id="closeThreshold" value="7" min="0" /> 
+    	</fieldset>
+	<fieldset>
+		<legend>Amount of time until a tab is closed</legend>
+		<input type="number" id="minIdleTime" value="3" min="1" /> 
+		<select id="minIdleTimeUnit">
+			<option value="86400000">Days</option>
+			<option value="3600000" >Hours</option>
+		</select>
+    	</fieldset>
+	<fieldset>
+		<span><input type="checkbox" id="onlyClosePrivateTabs" /> only close private tabs (requires: "Run in Private Window" permission)</span>
+	</fieldset>
+	<fieldset>
+        	<select id="saveFolder">
+	            <option value='' >Select Bookmark Folder to save closed tabs</option>
+        	</select>
+	</fieldset>
+	<fieldset>
+        	<legend>Whitelist</legend>
+	    	<p>Ignore Tabs with URLs matching the following Regular Expressions</p>
+		<form id="mainForm" accept-charset="utf-8">
+			<input type="submit" value="Save Changes" />
+			<input id="impbtn_wrapper" type="button" name="impbtn" value="Import Matchers" />
+			<input id="impbtn" type="file" name="impbtn" value="" style="display:none" />
+			<input id="expbtn" type="button" name="impbtn" value="Export Matchers" />
+			<table id="mainTable" border=1 style="width:100%;" >
+			<thead>
+				<th>Enable</th>
+				<th>Regular Expression Matchers</th>
+				<th>Actions</th>
+			</thead>
+				<tbody id='mainTableBody' />
+			</table>
+			<div><b>Note:</b> After editing or deleting entries click "Save Changes" to make the changes persistent</div>
+		</form>
+	</fieldset>
 	<script src="options.js"></script>
 </body>
 </html>

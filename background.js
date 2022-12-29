@@ -5,11 +5,11 @@ const temporary = browser.runtime.id.endsWith('@temporary-addon'); // debugging?
 //const extname = manifest.name;
 
 const excluded_tabs = new Set();
-const excluded_windows = new Set();
+const included_windows = new Set();
 
 // default state toolbar button/icon
-browser.browserAction.setBadgeText({text:'On'});
-browser.browserAction.setBadgeBackgroundColor({color:'green'});
+browser.browserAction.setBadgeText({text:'off'});
+browser.browserAction.setBadgeBackgroundColor({color:'red'});
 
 async function getFromStorage(type, id, fallback) {
     let tmp = await browser.storage.local.get(id);
@@ -62,7 +62,7 @@ async function tabCleanUp(){
 	// get non active, hidden, audible, highlighted or pinned tabs 
 	// which are not excluded or in an excluded Window
 	// or which match a whitelist expression
-	let tabs = (await browser.tabs.query(qryobj)).filter( async (t) => { return  (!excluded_tabs.has(t.id) && !excluded_windows.has(t.windowId) && !(await isWhitelisted(t.url))); } );
+	let tabs = (await browser.tabs.query(qryobj)).filter( async (t) => { return  (!excluded_tabs.has(t.id) && included_windows.has(t.windowId) && !(await isWhitelisted(t.url))); } );
 
 	if(onlyClosePrivateTabs){
 		tabs = tabs.filter( t => t.incognito );
@@ -78,8 +78,9 @@ async function tabCleanUp(){
 
 		// check idle time
 		const epoch_now = new Date().getTime();
-		const minIdleTime = await getFromStorage('number', 'minIdleTime', 1000*60*15)
-
+		const minIdleTime = await getFromStorage('number', 'minIdleTime', 3); // 3x
+		const minIdleTimeUnit = await getFromStorage('number', 'minIdleTimeUnit', 86400000) // day
+		const minIdleTimeMilliSecs = minIdleTime*minIdleTimeUnit;
 
 		tabs.sort((a,b) => {a.lastAccessed - b.lastAccessed});
 
@@ -92,7 +93,7 @@ async function tabCleanUp(){
 
 			// check last activation time
 			const delta = epoch_now - tab.lastAccessed
-			if( delta > (temporary?5000:minIdleTime) ){ // every 5 seconds in debug, else every storage value or 15 minutes if not yet set
+			if( delta > (minIdleTimeMilliSecs) ){ // every 5 seconds in debug, else every storage value or 15 minutes if not yet set
 
 				if( tab.url.startsWith('http')) {
 
@@ -152,7 +153,7 @@ async function tabCleanUp(){
 	}
 }
 
-setInterval(tabCleanUp, (temporary?5000:3*60*1000)); // check every 5 seconds in debug, else every 3 minutes
+setInterval(tabCleanUp, (10*60*1000)); // check every 10 minutes, close enough 
 
 
 browser.menus.create({
@@ -181,16 +182,16 @@ browser.menus.create({
 	}
 });
 
-// exlcude Window
+// include Windows ( better to be safe then sorry ) 
 async function BAonClicked(tab) {
-	if(excluded_windows.has(tab.windowId)){
-		excluded_windows.delete(tab.windowId);
-		browser.browserAction.setBadgeText({text:'On', windowId: tab.windowId});
-		browser.browserAction.setBadgeBackgroundColor({color:'green', windowId: tab.windowId});
-	}else{
-		excluded_windows.add(tab.windowId);
-		browser.browserAction.setBadgeText({text:'Off',windowId: tab.windowId});
+	if(included_windows.has(tab.windowId)){
+		included_windows.delete(tab.windowId);
+		browser.browserAction.setBadgeText({text:'off', windowId: tab.windowId});
 		browser.browserAction.setBadgeBackgroundColor({color:'red', windowId: tab.windowId});
+	}else{
+		included_windows.add(tab.windowId);
+		browser.browserAction.setBadgeText({text:'on',windowId: tab.windowId});
+		browser.browserAction.setBadgeBackgroundColor({color:'green', windowId: tab.windowId});
 	}
 }
 
@@ -206,8 +207,8 @@ function onTabRemoved(tabId, removeInfo) {
 browser.tabs.onRemoved.addListener(onTabRemoved);
 
 browser.windows.onRemoved.addListener((windowId) => {
-            if(excluded_windows.has(windowId)){
-                excluded_windows.delete(windowId);
+            if(included_windows.has(windowId)){
+                included_windows.delete(windowId);
             }
 });
 

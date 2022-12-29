@@ -54,7 +54,7 @@ function onChange(evt) {
 	}
 
 	obj[id] = value;
-	//console.log(id,value, el.type);
+	console.debug(id,value, el.type);
 	browser.storage.local.set(obj).catch(console.error);
 }
 
@@ -66,14 +66,14 @@ async function onLoad(){
         console.error(e);
     }
 
-[ "onlyClosePrivateTabs", "saveFolder", "closeThreshold","minIdleTime" ].map( (id) => {
+[ "onlyClosePrivateTabs", "saveFolder", "closeThreshold","minIdleTime", "minIdleTimeUnit" ].map( (id) => {
 
 	browser.storage.local.get(id).then( (obj) => {
 
 		let el = document.getElementById(id);
 		let val = obj[id];
 
-        console.log('map', id, val);
+        	console.debug('map', id, val);
 
 		if(typeof val !== 'undefined') {
 			if(el.type === 'checkbox') {
