@@ -73,7 +73,7 @@ async function onLoad(){
 		let el = document.getElementById(id);
 		let val = obj[id];
 
-        	console.debug('map', id, val);
+        	//console.debug('map', id, val);
 
 		if(typeof val !== 'undefined') {
 			if(el.type === 'checkbox') {

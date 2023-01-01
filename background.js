@@ -1,11 +1,17 @@
 /* global browser */
 
 const temporary = browser.runtime.id.endsWith('@temporary-addon'); // debugging?
-//const manifest = browser.runtime.getManifest();
-//const extname = manifest.name;
-
 const excluded_tabs = new Set();
 const included_windows = new Set();
+
+let onlyClosePrivateTabs;
+let closeThreshold;
+let minIdleTime;
+let minIdleTimeUnit;
+let saveFolder;
+let setIntervalId = null;
+
+let multipleHighlighted = false;
 
 // default state toolbar button/icon
 browser.browserAction.setBadgeText({text:'off'});
@@ -49,8 +55,6 @@ async function isWhitelisted(url){
 
 async function tabCleanUp(){
 
-	const onlyClosePrivateTabs = await getFromStorage('boolean','onlyClosePrivateTabs', false)
-
 	const qryobj =  {
 		active: false,
 		hidden: false,
@@ -62,13 +66,14 @@ async function tabCleanUp(){
 	// get non active, hidden, audible, highlighted or pinned tabs 
 	// which are not excluded or in an excluded Window
 	// or which match a whitelist expression
-	let tabs = (await browser.tabs.query(qryobj)).filter( async (t) => { return  (!excluded_tabs.has(t.id) && included_windows.has(t.windowId) && !(await isWhitelisted(t.url))); } );
+	let tabs = await browser.tabs.query(qryobj);
+	tabs = tabs.filter( (t) => (included_windows.has(t.windowId)));
+	tabs = tabs.filter( (t) => (!excluded_tabs.has(t.id)));
+	tabs = tabs.filter( async (t) => (!(await isWhitelisted(t.url))));
 
 	if(onlyClosePrivateTabs){
 		tabs = tabs.filter( t => t.incognito );
 	}
-
-	const closeThreshold = await getFromStorage('number','closeThreshold', 7)
 
 	if(tabs.length > closeThreshold) {
 
@@ -78,13 +83,9 @@ async function tabCleanUp(){
 
 		// check idle time
 		const epoch_now = new Date().getTime();
-		const minIdleTime = await getFromStorage('number', 'minIdleTime', 3); // 3x
-		const minIdleTimeUnit = await getFromStorage('number', 'minIdleTimeUnit', 86400000) // day
 		const minIdleTimeMilliSecs = minIdleTime*minIdleTimeUnit;
 
 		tabs.sort((a,b) => {a.lastAccessed - b.lastAccessed});
-
-        const saveFolder = await getFromStorage('string','saveFolder','');
 
 		for(const tab of tabs) {
 
@@ -93,7 +94,7 @@ async function tabCleanUp(){
 
 			// check last activation time
 			const delta = epoch_now - tab.lastAccessed
-			if( delta > (minIdleTimeMilliSecs) ){ // every 5 seconds in debug, else every storage value or 15 minutes if not yet set
+			if( delta > (temporary?5000:minIdleTimeMilliSecs) ){ // every 5 seconds in debug, else every storage value or 15 minutes if not yet set
 
 				if( tab.url.startsWith('http')) {
 
@@ -129,14 +130,14 @@ async function tabCleanUp(){
 
 						if(!mightHaveUserInput){
                             try {
-				    if(typeof saveFolder === 'string' && saveFolder !== ''){
-					let createdetails = {
-					    title: tab.title,
-					    url: tab.url,
-					    parentId: saveFolder
-					}
-					browser.bookmarks.create(createdetails);
-				    }
+								if(typeof saveFolder === 'string' && saveFolder !== ''){
+									let createdetails = {
+										title: tab.title,
+										url: tab.url,
+										parentId: saveFolder
+									}
+									browser.bookmarks.create(createdetails);
+								}
                             }catch(e) {
                                 console.error(e);
                             }
@@ -153,37 +154,46 @@ async function tabCleanUp(){
 	}
 }
 
-setInterval(tabCleanUp, (10*60*1000)); // check every 10 minutes, close enough 
-
-
 browser.menus.create({
 	title: "Exclude",
 	contexts: ["tab"],
-	onclick: async (/*info ,tab*/) => {
-	    const tabs = (await browser.tabs.query({highlighted:true, currentWindow: true, hidden: false}));
-        for(const t of tabs){
-            if(!excluded_tabs.has(t.id)){
-                excluded_tabs.add(t.id);
-            }
-        }
+	onclick: async (info, tab) => {
+		if(multipleHighlighted){
+			const tabs = (await browser.tabs.query({highlighted:true, currentWindow: true, hidden: false}));
+			for(const t of tabs){
+			    if(!excluded_tabs.has(t.id)){
+				excluded_tabs.add(t.id);
+			    }
+			}
+		}else{
+			if(!excluded_tabs.has(tab.id)){
+				excluded_tabs.add(tab.id);
+			}
+		}
 	}
 });
 
 browser.menus.create({
 	title: "Include",
 	contexts: ["tab"],
-	onclick: async (/*info, tab*/) => {
-	    const tabs = (await browser.tabs.query({highlighted:true, currentWindow: true, hidden: false}));
-        for(const t of tabs){
-            if(excluded_tabs.has(t.id)){
-                excluded_tabs.delete(t.id);
-            }
-        }
+	onclick: async (info, tab) => {
+		if(multipleHighlighted){
+		const tabs = (await browser.tabs.query({highlighted:true, currentWindow: true, hidden: false}));
+		for(const t of tabs){
+		    if(excluded_tabs.has(t.id)){
+			excluded_tabs.delete(t.id);
+		    }
+		}
+		}else{
+		    if(excluded_tabs.has(tab.id)){
+			excluded_tabs.delete(tab.id);
+		    }
+		}
 	}
 });
 
 // include Windows ( better to be safe then sorry ) 
-async function BAonClicked(tab) {
+async function onBAClicked(tab) {
 	if(included_windows.has(tab.windowId)){
 		included_windows.delete(tab.windowId);
 		browser.browserAction.setBadgeText({text:'off', windowId: tab.windowId});
@@ -195,20 +205,43 @@ async function BAonClicked(tab) {
 	}
 }
 
-browser.browserAction.onClicked.addListener(BAonClicked);
-
-
-function onTabRemoved(tabId, removeInfo) {
-            if(excluded_tabs.has(tabId)){
-                excluded_tabs.delete(tabId);
-            }
+function onTabRemoved(tabId /*, removeInfo*/) {
+	if(excluded_tabs.has(tabId)){
+		excluded_tabs.delete(tabId);
+        }
 }
 
-browser.tabs.onRemoved.addListener(onTabRemoved);
+function onWindowRemoved(windowId) {
+	if(included_windows.has(windowId)){
+		included_windows.delete(windowId);
+	}
+}
 
-browser.windows.onRemoved.addListener((windowId) => {
-            if(included_windows.has(windowId)){
-                included_windows.delete(windowId);
-            }
-});
+async function onStorageChanged() {
+	onlyClosePrivateTabs = await getFromStorage('boolean','onlyClosePrivateTabs',false);
+	closeThreshold = await getFromStorage('number','closeThreshold',7);
+	minIdleTime = await getFromStorage('number','minIdleTime',3);
+	minIdleTimeUnit = await getFromStorage('number','minIdleTimeUnit',86400000);
+	saveFolder = await getFromStorage('string','saveFolder','');
+
+	if(setIntervalId !== null){
+		clearInterval(setIntervalId);
+		setIntervalId = null;
+	}
+	setIntervalId = setInterval(tabCleanUp, (temporary?10000:10*60*1000));
+}
+
+function onTabsHighlighted(highlightInfo) {
+    multipleHighlighted = (highlightInfo.tabIds.length > 1);
+}
+
+(async () => {
+	await onStorageChanged();
+})();
+
+browser.storage.onChanged.addListener(onStorageChanged);
+browser.tabs.onRemoved.addListener(onTabRemoved);
+browser.windows.onRemoved.addListener(onWindowRemoved);
+browser.browserAction.onClicked.addListener(onBAClicked);
+browser.tabs.onHighlighted.addListener(onTabsHighlighted);
 
