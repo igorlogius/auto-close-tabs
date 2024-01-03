@@ -1,13 +1,24 @@
-Auto closes idle tabs when tabs are not active, hidden, playing audio, highlighted/selected, pinned or contain visible text input field with text in them.
+Auto closes idle tabs when tabs are not active, hidden, playing audio,
+highlighted/selected, pinned or contain visible text input field with text in
+them.
+
+<b>Note:</b>
+After installation, the addon is initally paused and does nothing, so one can modify the preferences to their requirements, without having to worry about losing any tabs. Afterwards the addon is activated on a per window basis, by clicking on the toolbar button/icon. The button allows to quickly change if a window should be included or excluded from the cleanup cycle.  Please note, that after a browser restart no window is initally part of the cleanup cycle, meaning, the addon will always be inactive.
+
 
 <b>Usage:</b>
 <ol>
-	<li>install the add-on</li>
-    	<li>set max number of tabs to always keep open and the idle time for all tabs to be considert for closing on the preference page</li>
+  <li>install the add-on</li>
+  <li>change the preferences of the addons to your requirements</li>
+  <li>click the toolbar button inside the browser windows, you want to monitor</li>
 </ol>
 
 <b>Notes:</b>
 <ol>
+    <li><b>Can/Should  i trust this addon?</b>
+        You can view the source code by either visiting the Homepage/Support Site or just saving/downloading the XPI (which is really just a ZIP Archive) and then extract it locally. The Sources in the XPI should be unofuscated and unminified (HTML,CSS and JS), so it's as easy to read as possible. Alternatives you can also use the <a href="https://addons.mozilla.org/en-US/firefox/addon/crxviewer/">CRX Viewer Extension by Rob W</a> to inspect the XPI sources. If you have an questions, you can also open an issue on the support site and i'll try and answer to the best of my abilities.
+        If you are no programmer and are still feeling unsure, you might want to visit one of the official or unoffical mozilla communities and ask if someone there with more knowlege can take a look. Examples: https://reddit.com/r/firefox , https://lemmy.world/c/firefox or https://chat.mozilla.org/#/room/#addons:mozilla.org
+    </li>
     <li><b>Permissions:</b>
         This add-on tries to use the minimal number of required permissions to successfully fullfill its intended purpose.
         If you think this could be improved please let me know by opening an issue and i will try to look into it.
