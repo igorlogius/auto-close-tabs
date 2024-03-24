@@ -1,6 +1,5 @@
 /* global browser */
 
-const temporary = browser.runtime.id.endsWith("@temporary-addon"); // debugging?
 const excluded_tabs = new Set();
 const included_windows = new Set();
 
@@ -54,7 +53,7 @@ async function isWhitelisted(url) {
 }
 
 async function tabCleanUp() {
-  console.debug("tabCleanUp");
+  //console.debug("tabCleanUp");
 
   const qryobj = {
     active: false,
@@ -72,7 +71,7 @@ async function tabCleanUp() {
   tabs = tabs.filter((t) => !excluded_tabs.has(t.id));
   tabs = tabs.filter(async (t) => !(await isWhitelisted(t.url)));
 
-  console.debug("considering tabs", tabs);
+  //console.debug("considering tabs", tabs);
 
   if (onlyClosePrivateTabs) {
     tabs = tabs.filter((t) => t.incognito);
@@ -101,7 +100,7 @@ async function tabCleanUp() {
 
       // check last activation time
       const delta = epoch_now - tab.lastAccessed;
-      if (delta > (temporary ? 5000 : minIdleTimeMilliSecs)) {
+      if (delta > minIdleTimeMilliSecs) {
         // every 5 seconds in debug, else every storage value or 15 minutes if not yet set
 
         if (tab.url.startsWith("http")) {
@@ -134,12 +133,14 @@ async function tabCleanUp() {
             });
             mightHaveUserInput = mightHaveUserInput[0];
 
+            /*
             console.debug(
               "tab",
               tab.id,
               "mightHaveUserInput",
               mightHaveUserInput
             );
+            */
             if (!mightHaveUserInput) {
               try {
                 if (typeof saveFolder === "string" && saveFolder !== "") {
@@ -251,14 +252,13 @@ async function onStorageChanged() {
   );
   closeThreshold = await getFromStorage("number", "closeThreshold", 7);
   minIdleTime = await getFromStorage("number", "minIdleTime", 3);
-  minIdleTimeUnit = await getFromStorage("number", "minIdleTimeUnit", 86400000);
+  minIdleTimeUnit = parseInt(
+    await getFromStorage("string", "minIdleTimeUnit", 86400000)
+  );
   saveFolder = await getFromStorage("string", "saveFolder", "");
 
-  if (setIntervalId !== null) {
-    clearInterval(setIntervalId);
-    setIntervalId = null;
-  }
-  setIntervalId = setInterval(tabCleanUp, temporary ? 10000 : 10 * 60 * 1000);
+  clearInterval(setIntervalId);
+  setIntervalId = setInterval(tabCleanUp, 1 * 60000); // every x minutes
 }
 
 function onTabsHighlighted(highlightInfo) {
@@ -267,10 +267,9 @@ function onTabsHighlighted(highlightInfo) {
 
 (async () => {
   await onStorageChanged();
+  browser.storage.onChanged.addListener(onStorageChanged);
+  browser.tabs.onRemoved.addListener(onTabRemoved);
+  browser.windows.onRemoved.addListener(onWindowRemoved);
+  browser.browserAction.onClicked.addListener(onBAClicked);
+  browser.tabs.onHighlighted.addListener(onTabsHighlighted);
 })();
-
-browser.storage.onChanged.addListener(onStorageChanged);
-browser.tabs.onRemoved.addListener(onTabRemoved);
-browser.windows.onRemoved.addListener(onWindowRemoved);
-browser.browserAction.onClicked.addListener(onBAClicked);
-browser.tabs.onHighlighted.addListener(onTabsHighlighted);
