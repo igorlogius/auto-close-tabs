@@ -7,14 +7,21 @@ them.
 https://github.com/igorlogius/auto-close-tabs/assets/67047467/c1f8050b-3431-4511-ad93-bbe117b0a151
 
 <b>Note:</b>
-After installation, the addon is initally paused and does nothing, so one can modify the preferences to their requirements, without having to worry about losing any tabs. Afterwards the addon is activated on a per window basis, by clicking on the toolbar button/icon. The button allows to quickly change if a window should be included or excluded from the cleanup cycle.  Please note, that after a browser restart no window is initally part of the cleanup cycle, meaning, the addon will always be inactive.
-
+After installation, the addon is initally paused and does nothing, so one can
+modify the preferences to their requirements, without having to worry about
+losing any tabs. Afterwards the addon is activated on a per window basis, by
+clicking on the toolbar button/icon. The button allows to quickly change if a
+window should be included or excluded from the cleanup cycle. Please note, that
+after a browser restart no window is initally part of the cleanup cycle,
+meaning, the addon will always be inactive.
 
 <b>Usage:</b>
 <ol>
   <li>install the add-on</li>
   <li>change the preferences of the addons to your requirements</li>
-  <li>click the toolbar button inside the browser windows, you want to monitor</li>
+  <li>
+    click the toolbar button inside the browser windows, you want to monitor
+  </li>
 </ol>
 
 <b>Notes:</b>
