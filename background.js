@@ -9,12 +9,8 @@ let minIdleTime;
 let minIdleTimeUnit;
 let saveFolder;
 let setIntervalId = null;
-
+let autostart = false;
 let multipleHighlighted = false;
-
-// default state toolbar button/icon
-browser.browserAction.setBadgeText({ text: "off" });
-browser.browserAction.setBadgeBackgroundColor({ color: "red" });
 
 async function getFromStorage(type, id, fallback) {
   let tmp = await browser.storage.local.get(id);
@@ -53,8 +49,6 @@ async function isWhitelisted(url) {
 }
 
 async function tabCleanUp() {
-  //console.debug("tabCleanUp");
-
   const qryobj = {
     active: false,
     hidden: false,
@@ -67,11 +61,15 @@ async function tabCleanUp() {
   // which are not excluded or in an excluded Window
   // or which match a whitelist expression
   let tabs = await browser.tabs.query(qryobj);
-  tabs = tabs.filter((t) => included_windows.has(t.windowId));
+  if (autostart) {
+    tabs = tabs.filter((t) => {
+      return !included_windows.has(t.windowId);
+    });
+  } else {
+    tabs = tabs.filter((t) => included_windows.has(t.windowId));
+  }
   tabs = tabs.filter((t) => !excluded_tabs.has(t.id));
   tabs = tabs.filter(async (t) => !(await isWhitelisted(t.url)));
-
-  //console.debug("considering tabs", tabs);
 
   if (onlyClosePrivateTabs) {
     tabs = tabs.filter((t) => t.incognito);
@@ -100,9 +98,14 @@ async function tabCleanUp() {
 
       // check last activation time
       const delta = epoch_now - tab.lastAccessed;
-      if (delta > minIdleTimeMilliSecs) {
-        // every 5 seconds in debug, else every storage value or 15 minutes if not yet set
 
+      console.debug(
+        "delta > minIdleTimeMilliSecs",
+        delta,
+        minIdleTimeMilliSecs
+      );
+
+      if (delta > minIdleTimeMilliSecs) {
         if (tab.url.startsWith("http")) {
           try {
             // check if tab contains potential text fields with user input
@@ -136,7 +139,8 @@ async function tabCleanUp() {
             /*
             console.debug(
               "tab",
-              tab.id,
+              tab.index,
+              tab.url,
               "mightHaveUserInput",
               mightHaveUserInput
             );
@@ -215,20 +219,50 @@ browser.menus.create({
 
 // include Windows ( better to be safe then sorry )
 async function onBAClicked(tab) {
-  if (included_windows.has(tab.windowId)) {
-    included_windows.delete(tab.windowId);
-    browser.browserAction.setBadgeText({ text: "off", windowId: tab.windowId });
-    browser.browserAction.setBadgeBackgroundColor({
-      color: "red",
-      windowId: tab.windowId,
-    });
+  if (autostart) {
+    if (!included_windows.has(tab.windowId)) {
+      included_windows.delete(tab.windowId);
+      browser.browserAction.setBadgeText({
+        text: "off",
+        windowId: tab.windowId,
+      });
+      browser.browserAction.setBadgeBackgroundColor({
+        color: "red",
+        windowId: tab.windowId,
+      });
+    } else {
+      included_windows.add(tab.windowId);
+      browser.browserAction.setBadgeText({
+        text: "on",
+        windowId: tab.windowId,
+      });
+      browser.browserAction.setBadgeBackgroundColor({
+        color: "green",
+        windowId: tab.windowId,
+      });
+    }
   } else {
-    included_windows.add(tab.windowId);
-    browser.browserAction.setBadgeText({ text: "on", windowId: tab.windowId });
-    browser.browserAction.setBadgeBackgroundColor({
-      color: "green",
-      windowId: tab.windowId,
-    });
+    if (included_windows.has(tab.windowId)) {
+      included_windows.delete(tab.windowId);
+      browser.browserAction.setBadgeText({
+        text: "off",
+        windowId: tab.windowId,
+      });
+      browser.browserAction.setBadgeBackgroundColor({
+        color: "red",
+        windowId: tab.windowId,
+      });
+    } else {
+      included_windows.add(tab.windowId);
+      browser.browserAction.setBadgeText({
+        text: "on",
+        windowId: tab.windowId,
+      });
+      browser.browserAction.setBadgeBackgroundColor({
+        color: "green",
+        windowId: tab.windowId,
+      });
+    }
   }
 }
 
@@ -250,6 +284,64 @@ async function onStorageChanged() {
     "onlyClosePrivateTabs",
     false
   );
+  autostart = await getFromStorage("boolean", "autostart", false);
+
+  if (autostart) {
+    browser.browserAction.setBadgeText({ text: "on" });
+    browser.browserAction.setBadgeBackgroundColor({ color: "green" });
+  } else {
+    // default state toolbar button/icon
+    browser.browserAction.setBadgeText({ text: "off" });
+    browser.browserAction.setBadgeBackgroundColor({ color: "red" });
+  }
+
+  const windows = await browser.windows.getAll({
+    populate: false,
+    windowTypes: ["normal"],
+  });
+  for (const win of windows) {
+    if (autostart) {
+      if (!included_windows.has(win.id)) {
+        browser.browserAction.setBadgeText({
+          text: "on",
+          windowId: win.id,
+        });
+        browser.browserAction.setBadgeBackgroundColor({
+          color: "green",
+          windowId: win.id,
+        });
+      } else {
+        browser.browserAction.setBadgeText({
+          text: "off",
+          windowId: win.id,
+        });
+        browser.browserAction.setBadgeBackgroundColor({
+          color: "red",
+          windowId: win.id,
+        });
+      }
+    } else {
+      if (included_windows.has(win.id)) {
+        browser.browserAction.setBadgeText({
+          text: "on",
+          windowId: win.id,
+        });
+        browser.browserAction.setBadgeBackgroundColor({
+          color: "green",
+          windowId: win.id,
+        });
+      } else {
+        browser.browserAction.setBadgeText({
+          text: "off",
+          windowId: win.id,
+        });
+        browser.browserAction.setBadgeBackgroundColor({
+          color: "red",
+          windowId: win.id,
+        });
+      }
+    }
+  }
   closeThreshold = await getFromStorage("number", "closeThreshold", 7);
   minIdleTime = await getFromStorage("number", "minIdleTime", 3);
   minIdleTimeUnit = parseInt(

@@ -52,7 +52,7 @@ function onChange(evt) {
   }
 
   obj[id] = value;
-  console.debug(id, value, el.type);
+  //console.debug(id, value, el.type);
   browser.storage.local.set(obj).catch(console.error);
 }
 
@@ -69,6 +69,7 @@ async function onLoad() {
     "closeThreshold",
     "minIdleTime",
     "minIdleTimeUnit",
+    "autostart",
   ].map((id) => {
     browser.storage.local
       .get(id)
