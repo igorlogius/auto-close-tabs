@@ -6,6 +6,7 @@
   "browser_action": {
     "default_area": "navbar"
   },
+  "description": "Auto closes idle tabs when they are not active, hidden, playing audio, selected, pinned or contain visible text input fields with text in them",
   "icons": {
     "256": "icon.png"
   },
@@ -15,5 +16,5 @@
   "options_ui": {
     "page": "options.html"
   },
-  "version": "1.7.13"
+  "version": "1.7.14"
 }
