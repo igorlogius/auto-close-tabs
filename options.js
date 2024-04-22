@@ -70,6 +70,11 @@ async function onLoad() {
     "minIdleTime",
     "minIdleTimeUnit",
     "autostart",
+    "consider_active",
+    "consider_hidden",
+    "consider_audible",
+    "consider_highlighted",
+    "consider_pinned",
   ].map((id) => {
     browser.storage.local
       .get(id)
