@@ -16,6 +16,7 @@ let consider_hidden = false;
 let consider_highlighted = false;
 let consider_audible = false;
 let consider_pinned = false;
+let consider_hasText = false;
 
 async function getFromStorage(type, id, fallback) {
   let tmp = await browser.storage.local.get(id);
@@ -131,8 +132,10 @@ async function tabCleanUp() {
           try {
             // check if tab contains potential text fields with user input
             // exclude hidden and non visible stuff
-            let mightHaveUserInput = await browser.tabs.executeScript(tab.id, {
-              code: `(function(){
+            let mightHaveUserInput = false;
+            if (tab.discarded !== false && consider_hasText) {
+              mightHaveUserInput = await browser.tabs.executeScript(tab.id, {
+                code: `(function(){
 								let els = document.querySelectorAll('input[type="text"],input[type="password"]');
 								for(const el of els) {
 									if(         el.type !== 'hidden' &&
@@ -154,10 +157,10 @@ async function tabCleanUp() {
 								}
 								return false;
 							  }());`,
-            });
-            mightHaveUserInput = mightHaveUserInput[0];
+              });
+              mightHaveUserInput = mightHaveUserInput[0];
 
-            /*
+              /*
             console.debug(
               "tab",
               tab.index,
@@ -166,6 +169,7 @@ async function tabCleanUp() {
               mightHaveUserInput
             );
             */
+            }
             if (!mightHaveUserInput) {
               try {
                 if (typeof saveFolder === "string" && saveFolder !== "") {
@@ -316,6 +320,7 @@ async function onStorageChanged() {
     false
   );
   consider_pinned = await getFromStorage("boolean", "consider_pinned", false);
+  consider_hasText = await getFromStorage("boolean", "consider_hasText", false);
 
   if (autostart) {
     browser.browserAction.setBadgeText({ text: "on" });

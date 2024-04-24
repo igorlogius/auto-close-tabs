@@ -75,6 +75,7 @@ async function onLoad() {
     "consider_audible",
     "consider_highlighted",
     "consider_pinned",
+    "consider_hasText",
   ].map((id) => {
     browser.storage.local
       .get(id)
