@@ -2,6 +2,8 @@ Auto closes idle tabs when they are not active, hidden, playing audio,
 selected, pinned or contain visible text input fields with text in
 them.
 
+### [Click here to report a bug, make a suggestion or ask a question](https://github.com/igorlogius/igorlogius/issues/new/choose)
+
 <b>Short Demo Video: </b>
 
 https://github.com/igorlogius/auto-close-tabs/assets/67047467/c1f8050b-3431-4511-ad93-bbe117b0a151
