@@ -401,3 +401,9 @@ function onTabsHighlighted(highlightInfo) {
   browser.browserAction.onClicked.addListener(onBAClicked);
   browser.tabs.onHighlighted.addListener(onTabsHighlighted);
 })();
+
+browser.runtime.onInstalled.addListener(async (details) => {
+  if (details.reason === "install") {
+    browser.runtime.openOptionsPage();
+  }
+});
