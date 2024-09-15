@@ -127,11 +127,13 @@ async function tabCleanUp() {
       // check last activation time
       const delta = epoch_now - tab.lastAccessed;
 
+      /*
       console.debug(
         "delta > minIdleTimeMilliSecs",
         delta,
         minIdleTimeMilliSecs
       );
+        */
 
       if (delta > minIdleTimeMilliSecs) {
         if (tab.url.startsWith("http")) {
@@ -313,7 +315,7 @@ async function onStorageChanged() {
   onlyClosePrivateTabs = await getFromStorage(
     "boolean",
     "onlyClosePrivateTabs",
-    false
+    false,
   );
   autostart = await getFromStorage("boolean", "autostart", false);
 
@@ -323,7 +325,7 @@ async function onStorageChanged() {
   consider_highlighted = await getFromStorage(
     "boolean",
     "consider_highlighted",
-    false
+    false,
   );
   consider_pinned = await getFromStorage("boolean", "consider_pinned", false);
   consider_hasText = await getFromStorage("boolean", "consider_hasText", false);
@@ -387,7 +389,7 @@ async function onStorageChanged() {
   closeThreshold = await getFromStorage("number", "closeThreshold", 7);
   minIdleTime = await getFromStorage("number", "minIdleTime", 3);
   minIdleTimeUnit = parseInt(
-    await getFromStorage("string", "minIdleTimeUnit", 86400000)
+    await getFromStorage("string", "minIdleTimeUnit", 86400000),
   );
   saveFolder = await getFromStorage("string", "saveFolder", "");
 
