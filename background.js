@@ -3,6 +3,12 @@
 const excluded_tabs = new Set();
 const included_windows = new Set();
 
+Array.prototype.asyncFilter = async function (f) {
+  var array = this;
+  var booleans = await Promise.all(array.map(f));
+  return array.filter((x, i) => booleans[i]);
+};
+
 let onlyClosePrivateTabs;
 let closeThreshold;
 let minIdleTime;
@@ -91,7 +97,7 @@ async function tabCleanUp() {
     tabs = tabs.filter((t) => included_windows.has(t.windowId));
   }
   tabs = tabs.filter((t) => !excluded_tabs.has(t.id));
-  tabs = tabs.filter(async (t) => !(await isWhitelisted(t.url)));
+  tabs = await tabs.asyncFilter(async (t) => !(await isWhitelisted(t.url)));
 
   if (onlyClosePrivateTabs) {
     tabs = tabs.filter((t) => t.incognito);
