@@ -19,7 +19,6 @@ let autostart = false;
 let multipleHighlighted = false;
 let consider_active = false;
 let consider_hidden = false;
-let consider_highlighted = false;
 let consider_audible = false;
 let consider_pinned = false;
 let consider_hasText = false;
@@ -65,7 +64,6 @@ async function tabCleanUp() {
     active: false,
     hidden: false,
     audible: false,
-    highlighted: false,
     pinned: false,
   };
 
@@ -77,9 +75,6 @@ async function tabCleanUp() {
   }
   if (consider_audible) {
     delete qryobj["audible"];
-  }
-  if (consider_highlighted) {
-    delete qryobj["highlighted"];
   }
   if (consider_pinned) {
     delete qryobj["pinned"];
@@ -322,11 +317,6 @@ async function onStorageChanged() {
   consider_active = await getFromStorage("boolean", "consider_active", false);
   consider_hidden = await getFromStorage("boolean", "consider_hidden", false);
   consider_audible = await getFromStorage("boolean", "consider_audible", false);
-  consider_highlighted = await getFromStorage(
-    "boolean",
-    "consider_highlighted",
-    false,
-  );
   consider_pinned = await getFromStorage("boolean", "consider_pinned", false);
   consider_hasText = await getFromStorage("boolean", "consider_hasText", false);
 

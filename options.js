@@ -73,7 +73,6 @@ async function onLoad() {
     "consider_active",
     "consider_hidden",
     "consider_audible",
-    "consider_highlighted",
     "consider_pinned",
     "consider_hasText",
   ].map((id) => {
