@@ -22,38 +22,41 @@ let consider_hidden = false;
 let consider_audible = false;
 let consider_pinned = false;
 let consider_hasText = false;
+let regexList = [];
+
+async function setToStorage(id, value) {
+  let obj = {};
+  obj[id] = value;
+  return browser.storage.local.set(obj);
+}
 
 async function getFromStorage(type, id, fallback) {
   let tmp = await browser.storage.local.get(id);
   return typeof tmp[id] === type ? tmp[id] : fallback;
 }
 
-async function isWhitelisted(url) {
-  const selectors = await (async () => {
-    try {
-      const tmp = await browser.storage.local.get("selectors");
-      if (typeof tmp["selectors"] !== "undefined") {
-        return tmp["selectors"];
-      }
-    } catch (e) {
-      console.error(e);
-    }
-    return [];
-  })();
+async function getRegexList() {
+  let out = [];
+  let tmp = await getFromStorage("string", "matchers", "");
 
-  for (const selector of selectors) {
-    try {
-      if (
-        typeof selector.activ === "boolean" &&
-        selector.activ === true &&
-        typeof selector.url_regex === "string" &&
-        selector.url_regex !== "" &&
-        new RegExp(selector.url_regex).test(url)
-      ) {
-        return true;
+  tmp.split("\n").forEach((line) => {
+    line = line.trim();
+    if (line !== "") {
+      try {
+        line = new RegExp(line.trim());
+        out.push(line);
+      } catch (e) {
+        console.error(e);
       }
-    } catch (e) {
-      console.error(e);
+    }
+  });
+  return out;
+}
+
+function matchesRegEx(url) {
+  for (let i = 0; i < regexList.length; i++) {
+    if (regexList[i].test(url)) {
+      return true;
     }
   }
   return false;
@@ -92,7 +95,7 @@ async function tabCleanUp() {
     tabs = tabs.filter((t) => included_windows.has(t.windowId));
   }
   tabs = tabs.filter((t) => !excluded_tabs.has(t.id));
-  tabs = await tabs.asyncFilter(async (t) => !(await isWhitelisted(t.url)));
+  tabs = await tabs.asyncFilter(async (t) => !matchesRegEx(t.url));
 
   if (onlyClosePrivateTabs) {
     tabs = tabs.filter((t) => t.incognito);
@@ -320,6 +323,8 @@ async function onStorageChanged() {
   consider_pinned = await getFromStorage("boolean", "consider_pinned", false);
   consider_hasText = await getFromStorage("boolean", "consider_hasText", false);
 
+  regexList = await getRegexList();
+
   if (autostart) {
     browser.browserAction.setBadgeText({ text: "on" });
     browser.browserAction.setBadgeBackgroundColor({ color: "green" });
@@ -403,5 +408,10 @@ function onTabsHighlighted(highlightInfo) {
 browser.runtime.onInstalled.addListener(async (details) => {
   if (details.reason === "install") {
     browser.runtime.openOptionsPage();
+  } else {
+    // Migrate old data
+    let tmp = await getFromStorage("object", "selectors", []);
+    tmp = tmp.map((e) => e.url_regex).join("\n");
+    await setToStorage("matchers", tmp);
   }
 });
