@@ -23,6 +23,7 @@ let consider_audible = false;
 let consider_pinned = false;
 let consider_hasText = false;
 let regexList = [];
+let listmode = false; // whitelist
 
 async function setToStorage(id, value) {
   let obj = {};
@@ -95,7 +96,14 @@ async function tabCleanUp() {
     tabs = tabs.filter((t) => included_windows.has(t.windowId));
   }
   tabs = tabs.filter((t) => !excluded_tabs.has(t.id));
-  tabs = await tabs.asyncFilter(async (t) => !matchesRegEx(t.url));
+
+  if (listmode === false) {
+    // whitelist
+    tabs = await tabs.asyncFilter(async (t) => !matchesRegEx(t.url));
+  } else {
+    // blacklist
+    tabs = await tabs.asyncFilter(async (t) => matchesRegEx(t.url));
+  }
 
   if (onlyClosePrivateTabs) {
     tabs = tabs.filter((t) => t.incognito);
@@ -322,6 +330,7 @@ async function onStorageChanged() {
   consider_audible = await getFromStorage("boolean", "consider_audible", false);
   consider_pinned = await getFromStorage("boolean", "consider_pinned", false);
   consider_hasText = await getFromStorage("boolean", "consider_hasText", false);
+  listmode = await getFromStorage("boolean", "listmode", false); // false := whitelist
 
   regexList = await getRegexList();
 

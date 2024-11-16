@@ -76,6 +76,7 @@ async function onLoad() {
     "consider_pinned",
     "consider_hasText",
     "matchers",
+    "listmode",
   ].map((id) => {
     browser.storage.local
       .get(id)
