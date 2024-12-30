@@ -23,6 +23,7 @@ let consider_audible = false;
 let consider_pinned = false;
 let consider_hasText = false;
 let regexList = [];
+let containerIdsToIgnore = [];
 let listmode = false; // whitelist
 
 async function setToStorage(id, value) {
@@ -54,6 +55,35 @@ async function getRegexList() {
   return out;
 }
 
+async function getContainerIdsToIgnore() {
+  let containerName2Id = new Map();
+
+  (await browser.contextualIdentities.query({})).forEach((c) => {
+    containerName2Id.set(c.name, c.cookieStoreId);
+  });
+
+  let out = [];
+  let tmp = await getFromStorage("string", "containersToIgnore", "");
+
+  //console.debug(tmp);
+  //console.debug(containerName2Id);
+
+  tmp.split("\n").forEach((line) => {
+    line = line.trim();
+    if (line !== "") {
+      try {
+        if (containerName2Id.has(line)) {
+          //console.debug(line, containerName2Id.get(line));
+          out.push(containerName2Id.get(line));
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  });
+  return out;
+}
+
 function matchesRegEx(url) {
   for (let i = 0; i < regexList.length; i++) {
     if (regexList[i].test(url)) {
@@ -64,6 +94,7 @@ function matchesRegEx(url) {
 }
 
 async function tabCleanUp() {
+  //console.debug("tabCleanUp");
   const qryobj = {
     active: false,
     hidden: false,
@@ -96,6 +127,8 @@ async function tabCleanUp() {
     tabs = tabs.filter((t) => included_windows.has(t.windowId));
   }
   tabs = tabs.filter((t) => !excluded_tabs.has(t.id));
+
+  tabs = tabs.filter((t) => !containerIdsToIgnore.includes(t.cookieStoreId));
 
   if (listmode === false) {
     // whitelist
@@ -318,6 +351,7 @@ function onWindowRemoved(windowId) {
 }
 
 async function onStorageChanged() {
+  //console.debug("onStorageChanged");
   onlyClosePrivateTabs = await getFromStorage(
     "boolean",
     "onlyClosePrivateTabs",
@@ -333,6 +367,10 @@ async function onStorageChanged() {
   listmode = await getFromStorage("boolean", "listmode", false); // false := whitelist
 
   regexList = await getRegexList();
+
+  containerIdsToIgnore = await getContainerIdsToIgnore();
+
+  //console.debug("containersToIgnore", containerIdsToIgnore);
 
   if (autostart) {
     browser.browserAction.setBadgeText({ text: "on" });

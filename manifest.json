@@ -12,9 +12,17 @@
   },
   "manifest_version": 2,
   "name": "Auto Close Tabs",
-  "permissions": ["bookmarks", "menus", "tabs", "storage", "<all_urls>"],
+  "permissions": [
+    "contextualIdentities",
+    "cookies",
+    "bookmarks",
+    "menus",
+    "tabs",
+    "storage",
+    "<all_urls>"
+  ],
   "options_ui": {
     "page": "options.html"
   },
-  "version": "1.7.23"
+  "version": "1.7.24"
 }

@@ -58,12 +58,27 @@
       </span>
       <textarea
         id="matchers"
-        style="width: 100%; min-height: 20em"
+        style="width: 100%; min-height: 10em"
         placeholder="Enter regular expressions line by line here
 Examples:
     ^https:\/\/www\.facebook\.com.*
     ^https:\/\/example\.net.*
     ^https:\/\/.*\.wikipedia\.org.*
+"
+      ></textarea>
+    </fieldset>
+    <fieldset>
+      <legend>Ignore Containers</legend>
+      <textarea
+        id="containersToIgnore"
+        style="width: 100%; min-height: 10em"
+        placeholder="Enter the names of the containers you want to ignore line by line here
+Examples:
+    Work
+    Hobby
+    XXX
+    YYY
+    ZZZ
 "
       ></textarea>
     </fieldset>
