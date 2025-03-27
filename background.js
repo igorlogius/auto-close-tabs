@@ -115,7 +115,7 @@ async function tabCleanUp(input) {
     a.lastAccessed - b.lastAccessed;
   });
 
-  const active_tab = all_tabs.find((t) => t.active === true);
+  //const active_tab = all_tabs.find((t) => t.active === true);
 
   for (const t of all_tabs) {
     // stop when we reach the closeThreshold
@@ -124,9 +124,9 @@ async function tabCleanUp(input) {
     }
 
     // ignore tabs to the right of the active_tab
-    if (t.index > active_tab.index) {
+    /*if (t.index > active_tab.index) {
       continue;
-    }
+    }*/
 
     // pins are special we assume them to important and ignore them
     if (t.pinned) {
