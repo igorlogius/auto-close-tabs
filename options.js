@@ -63,25 +63,12 @@ async function onLoad() {
     console.error(e);
   }
 
-  [
-    "onlyClosePrivateTabs",
-    "saveFolder",
-    "closeThreshold",
-    "minIdleTime",
-    "minIdleTimeUnit",
-    "autostart",
-    "consider_active",
-    "consider_hidden",
-    "consider_audible",
-    "consider_pinned",
-    "consider_hasText",
-    "matchers",
-    "containersToIgnore",
-    "listmode",
-  ].map((id) => {
-    browser.storage.local
-      .get(id)
-      .then((obj) => {
+  ["closeThreshold", "saveFolder", "intervalrules", "ignorerules"].map(
+    async (id) => {
+      try {
+        const obj = await browser.storage.local.get(id);
+        //.then((obj) => {
+        //console.debug(id);
         let el = document.getElementById(id);
         let val = obj[id];
 
@@ -94,12 +81,16 @@ async function onLoad() {
             el.value = val;
           }
         }
-      })
-      .catch(console.error);
+        //})
+        //.catch(console.error);
 
-    let el = document.getElementById(id);
-    el.addEventListener("input", onChange);
-  });
+        //let el = document.getElementById(id);
+        el.addEventListener("input", onChange);
+      } catch (e) {
+        console.error(e);
+      }
+    },
+  );
 }
 
 document.addEventListener("DOMContentLoaded", onLoad);

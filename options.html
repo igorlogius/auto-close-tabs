@@ -2,83 +2,92 @@
 <html>
   <head>
     <title>options</title>
+    <style>
+      body {
+        padding: 3px;
+      }
+      textarea {
+        overflow-wrap: normal;
+        overflow-x: scroll;
+      }
+    </style>
   </head>
   <body>
     <fieldset>
       <legend>
-        Minimal number of tabs to always keep open (by last access time)
+        <b>#Tabs to keep</b>
+        <abbr
+          title="tabs to keep open, last access time determines closing order"
+          >(?)</abbr
+        >
       </legend>
       <input type="number" id="closeThreshold" value="7" min="0" />
     </fieldset>
+
     <fieldset>
-      <legend>Amount of time until a tab is closed</legend>
-      <input type="number" id="minIdleTime" value="3" min="1" />
-      <select id="minIdleTimeUnit">
-        <option value="86400000">Days</option>
-        <option value="3600000">Hours</option>
-        <option value="60000">Minutes</option>
-      </select>
-    </fieldset>
-    <fieldset>
-      <span
-        ><input type="checkbox" id="autostart" /> Autostart
-        <abbr
-          title="activates the addon on browser startup and auto enables cleanup cyle for new windows"
-          >(?)</abbr
-        ></span
-      >
-    </fieldset>
-    <fieldset>
-      <legend>Consider Tabs which are ...</legend>
-      <span><input type="checkbox" id="consider_active" /> focused </span>
-      <span><input type="checkbox" id="consider_hidden" /> hidden </span>
-      <span><input type="checkbox" id="consider_audible" /> audible </span>
-      <span><input type="checkbox" id="consider_pinned" /> pinned </span>
-      <span
-        ><input type="checkbox" id="consider_hasText" /> have text in
-        fields</span
-      >
-    </fieldset>
-    <fieldset>
-      <span
-        ><input type="checkbox" id="onlyClosePrivateTabs" /> only close private
-        tabs (requires: "Run in Private Window" permission)</span
-      >
-    </fieldset>
-    <fieldset>
+      <legend>
+        <b>Auto Save</b>
+        <abbr title="save auto closed tabs as bookmarks">(?)</abbr>
+      </legend>
+
       <select id="saveFolder">
-        <option value="">Select Bookmark Folder to save closed tabs</option>
+        <option value="">Select a bookmark save folder to enable</option>
       </select>
     </fieldset>
+
     <fieldset>
-      <legend>White/Blacklist</legend>
-      <span
-        ><input type="checkbox" id="listmode" /> check to switch to Blacklist
-        mode
-      </span>
+      <legend>
+        <b>Close Rules</b>
+        <abbr title="Format: CloseTime(ms), Container(regex), URL(regex)"
+          >(?)</abbr
+        >
+      </legend>
       <textarea
-        id="matchers"
-        style="width: 100%; min-height: 10em"
-        placeholder="Enter regular expressions line by line here
-Examples:
-    ^https:\/\/www\.facebook\.com.*
-    ^https:\/\/example\.net.*
-    ^https:\/\/.*\.wikipedia\.org.*
+        id="intervalrules"
+        style="width: 100%; min-height: 15em"
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="off"
+        spellcheck="false"
+        placeholder="# Enter CloseTime(ms), Container(regex), URL(regex) line by line here
+# Lines starting with # are ignored
+# Example (1) 10 secs idle, no container, any URL
+10000, , ^https?:\/\/.*
+# Example (2) 3 mins idle, any container, any URL
+1800000, .*, ^https?:\/\/.*
+# Example (3) 6 mins idle, in 'Personal' container, URL matching 'https://example.net'
+60000, ^Personal$ , ^https:\/\/example\.net.*
+# Example (4) 5340000 ms idle, 'Tmp' containers, any URL
+5340000, ^Tmp.* , ^https?:\/\/.*
 "
       ></textarea>
     </fieldset>
+
     <fieldset>
-      <legend>Ignore Containers</legend>
+      <legend>
+        <b>Ignore Rules</b>
+
+        <abbr title="Format: Container(regex), URL(regex)">(?)</abbr>
+      </legend>
       <textarea
-        id="containersToIgnore"
-        style="width: 100%; min-height: 10em"
-        placeholder="Enter the names of the containers you want to ignore line by line here
-Examples:
-    Work
-    Hobby
-    XXX
-    YYY
-    ZZZ
+        id="ignorerules"
+        style="width: 100%; min-height: 15em"
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="off"
+        spellcheck="false"
+        placeholder="# Enter 'Container(regex)', 'URL(regex)' line by line here
+# Lines starting with # are ignored
+# Example (1) no container, any URL
+ , ^https?:\/\/.*
+# Example (2) any container, any URL
+.* , ^https?:\/\/.*
+# Example (3) 'Personal' container, any URL
+^Personal$ , ^https?:\/\/.*
+# Example (4) 'Personal' container, URL starting with 'https://example.net'
+^Personal$ , ^https:\/\/example\.net.*
+# Example (5) container starting with 'Tmp', any URL
+^Tmp.* , ^https?:\/\/.*
 "
       ></textarea>
     </fieldset>

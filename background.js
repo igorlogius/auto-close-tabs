@@ -1,30 +1,19 @@
 /* global browser */
 
-const excluded_tabs = new Set();
-const included_windows = new Set();
-
-Array.prototype.asyncFilter = async function (f) {
-  var array = this;
-  var booleans = await Promise.all(array.map(f));
-  return array.filter((x, i) => booleans[i]);
-};
-
-let onlyClosePrivateTabs;
-let closeThreshold;
-let minIdleTime;
-let minIdleTimeUnit;
-let saveFolder;
-let setIntervalId = null;
+let closeThreshold = 7;
+let saveFolder = "unfiled_____";
+let setIntervalIds = [];
 let autostart = false;
-let multipleHighlighted = false;
-let consider_active = false;
-let consider_hidden = false;
-let consider_audible = false;
-let consider_pinned = false;
-let consider_hasText = false;
-let regexList = [];
-let containerIdsToIgnore = [];
-let listmode = false; // whitelist
+let ignoreRules = [];
+
+function updateBadge(text, color) {
+  browser.browserAction.setBadgeText({
+    text,
+  });
+  browser.browserAction.setBadgeBackgroundColor({
+    color,
+  });
+}
 
 async function setToStorage(id, value) {
   let obj = {};
@@ -34,162 +23,200 @@ async function setToStorage(id, value) {
 
 async function getFromStorage(type, id, fallback) {
   let tmp = await browser.storage.local.get(id);
-  return typeof tmp[id] === type ? tmp[id] : fallback;
+  if (typeof tmp[id] === type) {
+    return tmp[id];
+  } else {
+    setToStorage(id, fallback);
+    return fallback;
+  }
 }
 
-async function getRegexList() {
-  let out = [];
-  let tmp = await getFromStorage("string", "matchers", "");
-
-  tmp.split("\n").forEach((line) => {
-    line = line.trim();
-    if (line !== "") {
-      try {
-        line = new RegExp(line.trim());
-        out.push(line);
-      } catch (e) {
-        console.error(e);
+async function rebuildIgnoreRules(ignorerulesStr) {
+  ignoreRules = [];
+  ignorerulesStr.split("\n").forEach((line) => {
+    try {
+      line = line.trim();
+      if (line !== "" && !line.startsWith("#")) {
+        const parts = line.split(",");
+        const containerNameMatcher =
+          parts[0].trim() === "" ? null : new RegExp(parts[0].trim());
+        const urlMatcher =
+          parts[1].trim() === "" ? null : new RegExp(parts[1].trim());
+        ignoreRules.push({ containerNameMatcher, urlMatcher });
       }
+    } catch (e) {
+      console.error(e);
     }
   });
-  return out;
 }
 
-async function getContainerIdsToIgnore() {
-  let containerName2Id = new Map();
+async function rebuildIntervalHandlers(intervalrulesStr) {
+  // now lets rebuild and start the new interval handlers
+  intervalrulesStr.split("\n").forEach((line) => {
+    try {
+      line = line.trim();
+      if (line !== "" && !line.startsWith("#")) {
+        const parts = line.split(",");
 
-  (await browser.contextualIdentities.query({})).forEach((c) => {
-    containerName2Id.set(c.name, c.cookieStoreId);
+        const minIdleTimeMilliSecs = parseInt(parts[0].trim());
+        const containerNameMatcher =
+          parts[1].trim() === "" ? null : new RegExp(parts[1].trim());
+        const urlMatcher =
+          parts[2].trim() === "" ? null : new RegExp(parts[2].trim());
+        //const consider_hasText = parts[3].trim()[0] === "y";
+
+        setIntervalIds.push(
+          setInterval(() => {
+            tabCleanUp({
+              minIdleTimeMilliSecs,
+              containerNameMatcher,
+              urlMatcher,
+              //consider_hasText,
+            });
+          }, minIdleTimeMilliSecs),
+        );
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  });
+}
+
+async function getContainerNameFromCookieStoreId(csid) {
+  try {
+    const contextualIdentity = await browser.contextualIdentities.get(csid);
+    return contextualIdentity.name;
+  } catch (e) {
+    // not inside a container
+  }
+  return null;
+}
+
+// this is run for each rule
+// but since JS is not executed in parallel
+// we should get away with using the global closeThreshold
+async function tabCleanUp(input) {
+  if (!autostart) {
+    return;
+  }
+
+  // to check idle time
+  const epoch_now = new Date().getTime();
+
+  let all_tabs = await browser.tabs.query({});
+
+  let max_nb_of_tabs_to_close = all_tabs.length - closeThreshold;
+
+  if (max_nb_of_tabs_to_close < 1) {
+    return;
+  }
+
+  all_tabs.sort((a, b) => {
+    a.lastAccessed - b.lastAccessed;
   });
 
-  let out = [];
-  let tmp = await getFromStorage("string", "containersToIgnore", "");
+  const active_tab = all_tabs.find((t) => t.active === true);
 
-  //console.debug(tmp);
-  //console.debug(containerName2Id);
+  for (const t of all_tabs) {
+    // stop when we reach the closeThreshold
+    if (max_nb_of_tabs_to_close < 1) {
+      continue;
+    }
 
-  tmp.split("\n").forEach((line) => {
-    line = line.trim();
-    if (line !== "") {
-      try {
-        if (containerName2Id.has(line)) {
-          //console.debug(line, containerName2Id.get(line));
-          out.push(containerName2Id.get(line));
+    // ignore tabs to the right of the active_tab
+    if (t.index > active_tab.index) {
+      continue;
+    }
+
+    // pins are special we assume them to important and ignore them
+    if (t.pinned) {
+      continue;
+    }
+
+    // generally when something is playing audio ... lets keep it open
+    // users can close it themself or it gets closed when the state changes
+    if (t.audible) {
+      continue;
+    }
+
+    // check the ignoreRules
+    let done = false;
+    const cn = await getContainerNameFromCookieStoreId(t.cookieStoreId);
+    for (const el of ignoreRules) {
+      if (el.containerNameMatcher === null) {
+        if (cn === null) {
+          if (el.urlMatcher.test(t.url)) {
+            done = true;
+            break;
+          }
         }
-      } catch (e) {
-        console.error(e);
+        continue;
+      }
+      if (cn === null) {
+        continue;
+      }
+      // both are not null, so lets check
+      if (el.containerNameMatcher.test(cn)) {
+        if (el.urlMatcher.test(t.url)) {
+          done = true;
+          break;
+        }
       }
     }
-  });
-  return out;
-}
 
-function matchesRegEx(url) {
-  for (let i = 0; i < regexList.length; i++) {
-    if (regexList[i].test(url)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-async function tabCleanUp() {
-  //console.debug("tabCleanUp");
-  const qryobj = {
-    active: false,
-    hidden: false,
-    audible: false,
-    pinned: false,
-  };
-
-  if (consider_active) {
-    delete qryobj["active"];
-  }
-  if (consider_hidden) {
-    delete qryobj["hidden"];
-  }
-  if (consider_audible) {
-    delete qryobj["audible"];
-  }
-  if (consider_pinned) {
-    delete qryobj["pinned"];
-  }
-
-  // get non active, hidden, audible, highlighted or pinned tabs
-  // which are not excluded or in an excluded Window
-  // or which match a whitelist expression
-  let tabs = await browser.tabs.query(qryobj);
-  if (autostart) {
-    tabs = tabs.filter((t) => {
-      return !included_windows.has(t.windowId);
-    });
-  } else {
-    tabs = tabs.filter((t) => included_windows.has(t.windowId));
-  }
-  tabs = tabs.filter((t) => !excluded_tabs.has(t.id));
-
-  tabs = tabs.filter((t) => !containerIdsToIgnore.includes(t.cookieStoreId));
-
-  if (listmode === false) {
-    // whitelist
-    tabs = await tabs.asyncFilter(async (t) => !matchesRegEx(t.url));
-  } else {
-    // blacklist
-    tabs = await tabs.asyncFilter(async (t) => matchesRegEx(t.url));
-  }
-
-  if (onlyClosePrivateTabs) {
-    tabs = tabs.filter((t) => t.incognito);
-  }
-
-  if (tabs.length > closeThreshold) {
-    let nb_of_tabs_to_close = tabs.length - closeThreshold;
-
-    if (nb_of_tabs_to_close < 1) {
-      return;
+    if (done) {
+      continue;
     }
 
-    // check idle time
-    const epoch_now = new Date().getTime();
-    const minIdleTimeMilliSecs = minIdleTime * minIdleTimeUnit;
-
-    tabs.sort((a, b) => {
-      a.lastAccessed - b.lastAccessed;
-    });
-
-    for (const tab of tabs) {
-      if (nb_of_tabs_to_close < 1) {
-        break;
+    // check the container
+    if (input.containerNameMatcher !== null) {
+      if (cn !== null) {
+        if (!input.containerNameMatcher.test(cn)) {
+          continue;
+        }
+      } else {
+        // cn := null
+        continue;
       }
-      nb_of_tabs_to_close--;
+    } else {
+      // containerNameMatcher === null
+      if (cn !== null) {
+        continue;
+      }
+      // cn === containerNameMatcher
+    }
 
-      // check last activation time
-      const delta = epoch_now - tab.lastAccessed;
+    // check the URL
+    if (input.urlMatcher !== null) {
+      if (!input.urlMatcher.test(t.url)) {
+        continue;
+      }
+    }
 
-      /*
-      console.debug(
-        "delta > minIdleTimeMilliSecs",
-        delta,
-        minIdleTimeMilliSecs
-      );
-        */
+    // check the idle aka. last accessed time of the tab
+    const delta = epoch_now - t.lastAccessed;
+    if (delta < input.minIdleTimeMilliSecs) {
+      continue;
+    }
 
-      if (delta > minIdleTimeMilliSecs) {
-        if (tab.url.startsWith("http")) {
-          try {
-            // check if tab contains potential text fields with user input
-            // exclude hidden and non visible stuff
-            let mightHaveUserInput = false;
-            if (tab.discarded !== false && consider_hasText) {
-              mightHaveUserInput = await browser.tabs.executeScript(tab.id, {
-                code: `(function(){
-								let els = document.querySelectorAll('input[type="text"],input[type="password"]');
+    if (!t.url.startsWith("http")) {
+      max_nb_of_tabs_to_close--;
+      await browser.tabs.remove(t.id);
+    } else {
+      //
+      try {
+        // check if the tab contains text fields with input
+        let mightHaveUserInput = false;
+        if (t.discarded !== false && input.consider_hasText) {
+          mightHaveUserInput = await browser.tabs.executeScript(t.id, {
+            code: `(function(){
+								let els = document.querySelectorAll('input[type="text"]');
 								for(const el of els) {
-									if(         el.type !== 'hidden' &&
+									if (        el.type !== 'hidden' &&
 									   el.style.display !== 'none'   &&
 									    typeof el.value === 'string' &&
-										   el.value !== ''
-									){
+										       el.value !== ''
+									) {
 										return true;
 									}
 								}
@@ -197,268 +224,84 @@ async function tabCleanUp() {
 								for(const el of els) {
 									if( el.style.display !== 'none'   &&
 									     typeof el.value === 'string' &&
-										    el.value !== ''
+										        el.value !== ''
 									){
 										return true;
 									}
 								}
 								return false;
 							  }());`,
-              });
-              mightHaveUserInput = mightHaveUserInput[0];
-
-              /*
-            console.debug(
-              "tab",
-              tab.index,
-              tab.url,
-              "mightHaveUserInput",
-              mightHaveUserInput
-            );
-            */
-            }
-            if (!mightHaveUserInput) {
-              try {
-                if (typeof saveFolder === "string" && saveFolder !== "") {
-                  let createdetails = {
-                    title: tab.title,
-                    url: tab.url,
-                    parentId: saveFolder,
-                  };
-                  browser.bookmarks.create(createdetails);
-                }
-              } catch (e) {
-                console.error(e);
-              }
-              await browser.tabs.remove(tab.id);
+          });
+          mightHaveUserInput = mightHaveUserInput[0];
+        }
+        if (!mightHaveUserInput) {
+          try {
+            if (typeof saveFolder === "string" && saveFolder !== "") {
+              let createdetails = {
+                title: t.title,
+                url: t.url,
+                parentId: saveFolder,
+              };
+              browser.bookmarks.create(createdetails);
             }
           } catch (e) {
-            console.error(e, tab.url);
+            console.error(e);
           }
-        } else {
-          await browser.tabs.remove(tab.id);
+          await browser.tabs.remove(t.id);
+          max_nb_of_tabs_to_close--;
         }
+      } catch (e) {
+        console.error(e, t.url);
       }
-    } // for tabs
+    }
   }
 }
 
-browser.menus.create({
-  title: "Exclude",
-  contexts: ["tab"],
-  onclick: async (info, tab) => {
-    if (multipleHighlighted) {
-      const tabs = await browser.tabs.query({
-        highlighted: true,
-        currentWindow: true,
-        hidden: false,
-      });
-      for (const t of tabs) {
-        if (!excluded_tabs.has(t.id)) {
-          excluded_tabs.add(t.id);
-        }
-      }
-    } else {
-      if (!excluded_tabs.has(tab.id)) {
-        excluded_tabs.add(tab.id);
-      }
-    }
-  },
-});
-
-browser.menus.create({
-  title: "Include",
-  contexts: ["tab"],
-  onclick: async (info, tab) => {
-    if (multipleHighlighted) {
-      const tabs = await browser.tabs.query({
-        highlighted: true,
-        currentWindow: true,
-        hidden: false,
-      });
-      for (const t of tabs) {
-        if (excluded_tabs.has(t.id)) {
-          excluded_tabs.delete(t.id);
-        }
-      }
-    } else {
-      if (excluded_tabs.has(tab.id)) {
-        excluded_tabs.delete(tab.id);
-      }
-    }
-  },
-});
-
-// include Windows ( better to be safe then sorry )
 async function onBAClicked(tab) {
-  if (autostart) {
-    if (!included_windows.has(tab.windowId)) {
-      included_windows.delete(tab.windowId);
-      browser.browserAction.setBadgeText({
-        text: "off",
-        windowId: tab.windowId,
-      });
-      browser.browserAction.setBadgeBackgroundColor({
-        color: "red",
-        windowId: tab.windowId,
-      });
-    } else {
-      included_windows.add(tab.windowId);
-      browser.browserAction.setBadgeText({
-        text: "on",
-        windowId: tab.windowId,
-      });
-      browser.browserAction.setBadgeBackgroundColor({
-        color: "green",
-        windowId: tab.windowId,
-      });
-    }
-  } else {
-    if (included_windows.has(tab.windowId)) {
-      included_windows.delete(tab.windowId);
-      browser.browserAction.setBadgeText({
-        text: "off",
-        windowId: tab.windowId,
-      });
-      browser.browserAction.setBadgeBackgroundColor({
-        color: "red",
-        windowId: tab.windowId,
-      });
-    } else {
-      included_windows.add(tab.windowId);
-      browser.browserAction.setBadgeText({
-        text: "on",
-        windowId: tab.windowId,
-      });
-      browser.browserAction.setBadgeBackgroundColor({
-        color: "green",
-        windowId: tab.windowId,
-      });
-    }
-  }
-}
-
-function onTabRemoved(tabId /*, removeInfo*/) {
-  if (excluded_tabs.has(tabId)) {
-    excluded_tabs.delete(tabId);
-  }
-}
-
-function onWindowRemoved(windowId) {
-  if (included_windows.has(windowId)) {
-    included_windows.delete(windowId);
-  }
+  setToStorage("autostart", !autostart);
 }
 
 async function onStorageChanged() {
-  //console.debug("onStorageChanged");
-  onlyClosePrivateTabs = await getFromStorage(
-    "boolean",
-    "onlyClosePrivateTabs",
-    false,
-  );
   autostart = await getFromStorage("boolean", "autostart", false);
-
-  consider_active = await getFromStorage("boolean", "consider_active", false);
-  consider_hidden = await getFromStorage("boolean", "consider_hidden", false);
-  consider_audible = await getFromStorage("boolean", "consider_audible", false);
-  consider_pinned = await getFromStorage("boolean", "consider_pinned", false);
-  consider_hasText = await getFromStorage("boolean", "consider_hasText", false);
-  listmode = await getFromStorage("boolean", "listmode", false); // false := whitelist
-
-  regexList = await getRegexList();
-
-  containerIdsToIgnore = await getContainerIdsToIgnore();
-
-  //console.debug("containersToIgnore", containerIdsToIgnore);
+  saveFolder = await getFromStorage("string", "saveFolder", "unfiled_____");
+  closeThreshold = await getFromStorage(
+    "number",
+    "closeThreshold",
+    closeThreshold,
+  );
 
   if (autostart) {
-    browser.browserAction.setBadgeText({ text: "on" });
-    browser.browserAction.setBadgeBackgroundColor({ color: "green" });
+    updateBadge("on", "green");
+
+    // stop all running intervals
+    setIntervalIds.forEach((id) => {
+      clearInterval(id);
+    });
+    setIntervalIds = [];
+
+    rebuildIgnoreRules(await getFromStorage("string", "ignorerules", ""));
+    rebuildIntervalHandlers(
+      await getFromStorage("string", "intervalrules", ""),
+    );
   } else {
-    // default state toolbar button/icon
-    browser.browserAction.setBadgeText({ text: "off" });
-    browser.browserAction.setBadgeBackgroundColor({ color: "red" });
+    updateBadge("off", "red");
   }
-
-  const windows = await browser.windows.getAll({
-    populate: false,
-    windowTypes: ["normal"],
-  });
-  for (const win of windows) {
-    if (autostart) {
-      if (!included_windows.has(win.id)) {
-        browser.browserAction.setBadgeText({
-          text: "on",
-          windowId: win.id,
-        });
-        browser.browserAction.setBadgeBackgroundColor({
-          color: "green",
-          windowId: win.id,
-        });
-      } else {
-        browser.browserAction.setBadgeText({
-          text: "off",
-          windowId: win.id,
-        });
-        browser.browserAction.setBadgeBackgroundColor({
-          color: "red",
-          windowId: win.id,
-        });
-      }
-    } else {
-      if (included_windows.has(win.id)) {
-        browser.browserAction.setBadgeText({
-          text: "on",
-          windowId: win.id,
-        });
-        browser.browserAction.setBadgeBackgroundColor({
-          color: "green",
-          windowId: win.id,
-        });
-      } else {
-        browser.browserAction.setBadgeText({
-          text: "off",
-          windowId: win.id,
-        });
-        browser.browserAction.setBadgeBackgroundColor({
-          color: "red",
-          windowId: win.id,
-        });
-      }
-    }
-  }
-  closeThreshold = await getFromStorage("number", "closeThreshold", 7);
-  minIdleTime = await getFromStorage("number", "minIdleTime", 3);
-  minIdleTimeUnit = parseInt(
-    await getFromStorage("string", "minIdleTimeUnit", 86400000),
-  );
-  saveFolder = await getFromStorage("string", "saveFolder", "");
-
-  clearInterval(setIntervalId);
-  setIntervalId = setInterval(tabCleanUp, 1 * 60000); // every x minutes
-}
-
-function onTabsHighlighted(highlightInfo) {
-  multipleHighlighted = highlightInfo.tabIds.length > 1;
 }
 
 (async () => {
   await onStorageChanged();
   browser.storage.onChanged.addListener(onStorageChanged);
-  browser.tabs.onRemoved.addListener(onTabRemoved);
-  browser.windows.onRemoved.addListener(onWindowRemoved);
   browser.browserAction.onClicked.addListener(onBAClicked);
-  browser.tabs.onHighlighted.addListener(onTabsHighlighted);
 })();
 
 browser.runtime.onInstalled.addListener(async (details) => {
   if (details.reason === "install") {
     browser.runtime.openOptionsPage();
-  } else {
-    // Migrate old data
-    let tmp = await getFromStorage("object", "selectors", []);
-    tmp = tmp.map((e) => e.url_regex).join("\n");
-    await setToStorage("matchers", tmp);
   }
+  // >>> TODO: remove after v1.8.25
+  else if (details.reason === "update") {
+    setToStorage("autostart", false);
+    browser.runtime.openOptionsPage();
+  }
+  // <<<
 });

@@ -6,7 +6,7 @@
   "browser_action": {
     "default_area": "navbar"
   },
-  "description": "Auto closes idle tabs when they are not active, hidden, playing audio, selected, pinned or contain visible text input fields with text in them",
+  "description": "Automatically close tabs which have not been accessed for a time",
   "icons": {
     "256": "icon.png"
   },
@@ -16,7 +16,6 @@
     "contextualIdentities",
     "cookies",
     "bookmarks",
-    "menus",
     "tabs",
     "storage",
     "<all_urls>"
@@ -24,5 +23,6 @@
   "options_ui": {
     "page": "options.html"
   },
-  "version": "1.7.24"
+  "incognito": "not_allowed",
+  "version": "1.8.25"
 }
