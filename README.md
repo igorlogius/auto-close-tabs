@@ -7,7 +7,7 @@ pinned or contain visible text input fields with text in them.
 
 <b>Short Demo Video: </b>
 
-https://github.com/igorlogius/auto-close-tabs/assets/67047467/c1f8050b-3431-4511-ad93-bbe117b0a151
+https://github.com/user-attachments/assets/9e8ade82-31b6-4daf-8149-ee629b74a68b
 
 <b>Note:</b>
 After installation, the addon is initally paused and does nothing, so one can
@@ -23,6 +23,6 @@ meaning, the addon will always be inactive.
   <li>install the add-on</li>
   <li>change the preferences of the addons to your requirements</li>
   <li>
-    click the toolbar button inside the browser windows, you want to monitor
+    click the toolbar button to start/stop auto closing
   </li>
 </ol>
