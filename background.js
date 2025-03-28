@@ -31,27 +31,85 @@ async function getFromStorage(type, id, fallback) {
   }
 }
 
-async function rebuildIgnoreRules(ignorerulesStr) {
+async function rebuildIgnoreRules(
+  ignorerulesStr_container_regexs,
+  ignorerulesStr_url_regexs,
+) {
   ignoreRules = [];
-  ignorerulesStr.split("\n").forEach((line) => {
+
+  const container_regexs = ignorerulesStr_container_regexs.split("\n");
+  const url_regexs = ignorerulesStr_url_regexs.split("\n");
+
+  for (let i = 0; i < container_regexs.length && i < url_regexs.length; i++) {
     try {
-      line = line.trim();
-      if (line !== "" && !line.startsWith("#")) {
-        const parts = line.split(",");
-        const containerNameMatcher =
-          parts[0].trim() === "" ? null : new RegExp(parts[0].trim());
-        const urlMatcher =
-          parts[1].trim() === "" ? null : new RegExp(parts[1].trim());
-        ignoreRules.push({ containerNameMatcher, urlMatcher });
+      left = container_regexs[i].trim();
+      right = url_regexs[i].trim();
+
+      if (!left.startsWith("#") && !right.startsWith("#")) {
+        const containerNameMatcher = left === "" ? null : new RegExp(left);
+        const urlMatcher = right === "" ? null : new RegExp(right);
+        if (urlMatcher !== null) {
+          //console.debug(containerNameMatcher , urlMatcher);
+          ignoreRules.push({ containerNameMatcher, urlMatcher });
+        }
       }
     } catch (e) {
       console.error(e);
     }
-  });
+  }
 }
 
-async function rebuildIntervalHandlers(intervalrulesStr) {
+async function rebuildIntervalHandlers(
+  intervalrulesStr_time_ms_and_container_regexs,
+  intervalrulesStr_url_regexs,
+) {
   // now lets rebuild and start the new interval handlers
+
+  const time_ms_and_container_regexs =
+    intervalrulesStr_time_ms_and_container_regexs.split("\n");
+  const url_regexs = intervalrulesStr_url_regexs.split("\n");
+
+  for (
+    let i = 0;
+    i < time_ms_and_container_regexs.length && i < url_regexs.length;
+    i++
+  ) {
+    try {
+      let left = time_ms_and_container_regexs[i].trim();
+      let right = url_regexs[i].trim();
+
+      if (!left.startsWith("#") && !right.startsWith("#")) {
+        left_parts = left.split(",");
+        if (left_parts.length < 2) {
+          continue;
+        }
+
+        const minIdleTimeMilliSecs = parseInt(left_parts[0].trim());
+
+        left = left_parts.slice(1).join(",");
+
+        const containerNameMatcher = left === "" ? null : new RegExp(left);
+        const urlMatcher = right === "" ? null : new RegExp(right);
+
+        //console.debug(minIdleTimeMilliSecs,containerNameMatcher, urlMatcher);
+
+        setIntervalIds.push(
+          setInterval(() => {
+            tabCleanUp({
+              minIdleTimeMilliSecs,
+              containerNameMatcher,
+              urlMatcher,
+              //consider_hasText,
+            });
+          }, minIdleTimeMilliSecs),
+        );
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  return;
   intervalrulesStr.split("\n").forEach((line) => {
     try {
       line = line.trim();
@@ -96,6 +154,7 @@ async function getContainerNameFromCookieStoreId(csid) {
 // but since JS is not executed in parallel
 // we should get away with using the global closeThreshold
 async function tabCleanUp(input) {
+  //console.debug('tabCleanUp', input);
   if (!autostart) {
     return;
   }
@@ -279,9 +338,17 @@ async function onStorageChanged() {
     });
     setIntervalIds = [];
 
-    rebuildIgnoreRules(await getFromStorage("string", "ignorerules", ""));
+    rebuildIgnoreRules(
+      await getFromStorage("string", "ignorerules_container_regex", ""),
+      await getFromStorage("string", "ignorerules_url_regex", ""),
+    );
     rebuildIntervalHandlers(
-      await getFromStorage("string", "intervalrules", ""),
+      await getFromStorage(
+        "string",
+        "intervalrules_time_ms_and_container_regex",
+        "",
+      ),
+      await getFromStorage("string", "intervalrules_url_regex", ""),
     );
   } else {
     updateBadge("off", "red");

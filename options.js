@@ -63,34 +63,39 @@ async function onLoad() {
     console.error(e);
   }
 
-  ["closeThreshold", "saveFolder", "intervalrules", "ignorerules"].map(
-    async (id) => {
-      try {
-        const obj = await browser.storage.local.get(id);
-        //.then((obj) => {
-        //console.debug(id);
-        let el = document.getElementById(id);
-        let val = obj[id];
+  [
+    "closeThreshold",
+    "saveFolder",
+    "intervalrules_url_regex",
+    "intervalrules_time_ms_and_container_regex",
+    "ignorerules_url_regex",
+    "ignorerules_container_regex",
+  ].map(async (id) => {
+    try {
+      const obj = await browser.storage.local.get(id);
+      //.then((obj) => {
+      //console.debug(id);
+      let el = document.getElementById(id);
+      let val = obj[id];
 
-        //console.debug('map', id, val);
+      //console.debug('map', id, val);
 
-        if (typeof val !== "undefined") {
-          if (el.type === "checkbox") {
-            el.checked = val;
-          } else {
-            el.value = val;
-          }
+      if (typeof val !== "undefined") {
+        if (el.type === "checkbox") {
+          el.checked = val;
+        } else {
+          el.value = val;
         }
-        //})
-        //.catch(console.error);
-
-        //let el = document.getElementById(id);
-        el.addEventListener("input", onChange);
-      } catch (e) {
-        console.error(e);
       }
-    },
-  );
+      //})
+      //.catch(console.error);
+
+      //let el = document.getElementById(id);
+      el.addEventListener("input", onChange);
+    } catch (e) {
+      console.error(e);
+    }
+  });
 }
 
 document.addEventListener("DOMContentLoaded", onLoad);

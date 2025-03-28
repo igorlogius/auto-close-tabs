@@ -43,22 +43,37 @@
         >
       </legend>
       <textarea
-        id="intervalrules"
-        style="width: 100%; min-height: 15em"
+        id="intervalrules_time_ms_and_container_regex"
+        style="resize: none; float: left; width: 50%; height: 15em"
         autocomplete="off"
         autocorrect="off"
         autocapitalize="off"
         spellcheck="false"
-        placeholder="# Enter CloseTime(ms), Container(regex), URL(regex) line by line here
-# Lines starting with # are ignored
-# Example (1) 10 secs idle, no container, any URL
-10000, , ^https?:\/\/.*
-# Example (2) 3 mins idle, any container, any URL
-1800000, .*, ^https?:\/\/.*
-# Example (3) 6 mins idle, in 'Personal' container, URL matching 'https://example.net'
-60000, ^Personal$ , ^https:\/\/example\.net.*
-# Example (4) 5340000 ms idle, 'Tmp' containers, any URL
-5340000, ^Tmp.* , ^https?:\/\/.*
+        placeholder="# CloseTime(MS),'Container(RE)
+# Examples:
+# 10s, no container
+10000,
+# 20s, any container
+20000,.*
+# 1s Tmp container
+1000,^Tmp$
+"
+      ></textarea>
+      <textarea
+        id="intervalrules_url_regex"
+        style="resize: none; width: 50%; height: 15em"
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="off"
+        spellcheck="false"
+        placeholder="# 'URL(regex)'
+# Examples:
+# any http/s URL
+^https?:\/\/.*
+# new tab page
+^about:newtab
+# any about page
+^about:.*
 "
       ></textarea>
     </fieldset>
@@ -67,27 +82,36 @@
       <legend>
         <b>Ignore Rules</b>
 
-        <abbr title="Format: Container(regex), URL(regex)">(?)</abbr>
+        <abbr title="Format: Container(regex) | URL(regex)">(?)</abbr>
       </legend>
       <textarea
-        id="ignorerules"
-        style="width: 100%; min-height: 15em"
+        id="ignorerules_container_regex"
+        style="float: left; resize: none; width: 50%; height: 15em"
         autocomplete="off"
         autocorrect="off"
         autocapitalize="off"
         spellcheck="false"
-        placeholder="# Enter 'Container(regex)', 'URL(regex)' line by line here
-# Lines starting with # are ignored
-# Example (1) no container, any URL
- , ^https?:\/\/.*
-# Example (2) any container, any URL
-.* , ^https?:\/\/.*
-# Example (3) 'Personal' container, any URL
-^Personal$ , ^https?:\/\/.*
-# Example (4) 'Personal' container, URL starting with 'https://example.net'
-^Personal$ , ^https:\/\/example\.net.*
-# Example (5) container starting with 'Tmp', any URL
-^Tmp.* , ^https?:\/\/.*
+        placeholder="# Enter 'Container(regex)' here
+# Examples:
+#                  := no container
+#  .*              := any container
+#  ^Personal$      := exact Match with Personal container
+#  ^Tmp.*          := container starting with Tmp
+"
+      ></textarea>
+      <textarea
+        id="ignorerules_url_regex"
+        style="resize: none; width: 50%; height: 15em"
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="off"
+        spellcheck="false"
+        placeholder="# Enter 'URL(regex)' here
+# Examples:
+#  ^https?:\/\/    := any http/s URL
+#  ^about:newtab   := new tab page
+#  ^about:blank    := blank tab
+#  ^about:.*       := any about page
 "
       ></textarea>
     </fieldset>
