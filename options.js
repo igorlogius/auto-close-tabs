@@ -91,10 +91,46 @@ async function onLoad() {
       //.catch(console.error);
 
       //let el = document.getElementById(id);
-      el.addEventListener("input", onChange);
+      //el.addEventListener("input", onChange);
     } catch (e) {
       console.error(e);
     }
+  });
+
+  document.getElementById("savebtn").addEventListener("click", () => {
+    [
+      "closeThreshold",
+      "saveFolder",
+      "intervalrules_url_regex",
+      "intervalrules_time_ms_and_container_regex",
+      "ignorerules_url_regex",
+      "ignorerules_container_regex",
+    ].forEach((id) => {
+      let el = document.getElementById(id);
+
+      let value = el.type === "checkbox" ? el.checked : el.value;
+      let obj = {};
+
+      if (el.type === "number") {
+        try {
+          value = parseInt(value);
+          if (isNaN(value)) {
+            value = el.min;
+          }
+          if (value < el.min) {
+            value = el.min;
+          }
+        } catch (e) {
+          value = el.min;
+        }
+      }
+
+      obj[id] = value;
+      //console.debug(id, value, el.type);
+      browser.storage.local.set(obj).catch(console.error);
+    });
+
+    browser.runtime.sendMessage({ cmd: "storageChanged" });
   });
 }
 

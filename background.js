@@ -49,7 +49,7 @@ async function rebuildIgnoreRules(
         const containerNameMatcher = left === "" ? null : new RegExp(left);
         const urlMatcher = right === "" ? null : new RegExp(right);
         if (urlMatcher !== null) {
-          //console.debug(containerNameMatcher , urlMatcher);
+          //console.debug(containerNameMatcher, urlMatcher);
           ignoreRules.push({ containerNameMatcher, urlMatcher });
         }
       }
@@ -63,6 +63,7 @@ async function rebuildIntervalHandlers(
   intervalrulesStr_time_ms_and_container_regexs,
   intervalrulesStr_url_regexs,
 ) {
+  //console.debug("rebuildIntervalHandlers");
   // now lets rebuild and start the new interval handlers
 
   const time_ms_and_container_regexs =
@@ -78,7 +79,14 @@ async function rebuildIntervalHandlers(
       let left = time_ms_and_container_regexs[i].trim();
       let right = url_regexs[i].trim();
 
-      if (!left.startsWith("#") && !right.startsWith("#")) {
+      //console.debug(left, right);
+
+      if (
+        !left.startsWith("#") &&
+        !right.startsWith("#") &&
+        right !== "" &&
+        left !== ""
+      ) {
         left_parts = left.split(",");
         if (left_parts.length < 2) {
           continue;
@@ -91,7 +99,7 @@ async function rebuildIntervalHandlers(
         const containerNameMatcher = left === "" ? null : new RegExp(left);
         const urlMatcher = right === "" ? null : new RegExp(right);
 
-        //console.debug(minIdleTimeMilliSecs,containerNameMatcher, urlMatcher);
+        //console.debug(minIdleTimeMilliSecs, containerNameMatcher, urlMatcher);
 
         setIntervalIds.push(
           setInterval(() => {
@@ -110,7 +118,7 @@ async function rebuildIntervalHandlers(
   }
 
   return;
-  intervalrulesStr.split("\n").forEach((line) => {
+  /*intervalrulesStr.split("\n").forEach((line) => {
     try {
       line = line.trim();
       if (line !== "" && !line.startsWith("#")) {
@@ -138,6 +146,7 @@ async function rebuildIntervalHandlers(
       console.error(e);
     }
   });
+    */
 }
 
 async function getContainerNameFromCookieStoreId(csid) {
@@ -318,9 +327,11 @@ async function tabCleanUp(input) {
 
 async function onBAClicked(tab) {
   setToStorage("autostart", !autostart);
+  onStorageChanged();
 }
 
 async function onStorageChanged() {
+  //console.debug("onStorageChanged()");
   autostart = await getFromStorage("boolean", "autostart", false);
   saveFolder = await getFromStorage("string", "saveFolder", "unfiled_____");
   closeThreshold = await getFromStorage(
@@ -357,8 +368,14 @@ async function onStorageChanged() {
 
 (async () => {
   await onStorageChanged();
-  browser.storage.onChanged.addListener(onStorageChanged);
+  //browser.storage.onChanged.addListener(onStorageChanged);
   browser.browserAction.onClicked.addListener(onBAClicked);
+  browser.runtime.onMessage.addListener((data, sender) => {
+    //console.debug(data);
+    if (data.cmd === "storageChanged") {
+      onStorageChanged();
+    }
+  });
 })();
 
 browser.runtime.onInstalled.addListener(async (details) => {
