@@ -132,7 +132,7 @@ async function tabCleanUp(input) {
 
   let all_tabs = await browser.tabs.query({
     // likely used to simulate groups lets ignore them until they become visible
-    hidden: false,
+    //hidden: false,
     // generally when something is playing audio lets keep it open
     audible: false,
     // ignore special
@@ -142,7 +142,10 @@ async function tabCleanUp(input) {
     windowType: "normal",
   });
 
-  let max_nb_of_tabs_to_close = all_tabs.length - closeThreshold;
+  const nb_hidden_tabs = all_tabs.filter((i) => i.hidden).length;
+
+  let max_nb_of_tabs_to_close =
+    all_tabs.length - nb_hidden_tabs - closeThreshold;
 
   if (max_nb_of_tabs_to_close < 1) {
     return;
@@ -155,10 +158,6 @@ async function tabCleanUp(input) {
   for (const t of all_tabs) {
     // stop when we reach the closeThreshold
     if (max_nb_of_tabs_to_close < 1) {
-      continue;
-    }
-
-    if (t.audible) {
       continue;
     }
 
