@@ -6,6 +6,11 @@ let setIntervalIds = [];
 let autostart = false;
 let ignoreRules = [];
 
+const asyncFilter = async (arr, predicate) => {
+  const results = await Promise.all(arr.map(predicate));
+  return arr.filter((_v, index) => results[index]);
+};
+
 function updateBadge(text, color) {
   browser.browserAction.setBadgeText({
     text,
@@ -130,30 +135,54 @@ async function tabCleanUp(input) {
   // to check idle time
   const epoch_now = new Date().getTime();
 
-  let all_tabs = await browser.tabs.query({
-    // likely used to simulate groups lets ignore them until they become visible
-    //hidden: false,
-    // generally when something is playing audio lets keep it open
-    audible: false,
-    // ignore special
-    pinned: false,
-    // lets not suprise the user by closing the active tab
-    active: false,
-    windowType: "normal",
+  let all_tabs = (
+    await asyncFilter(
+      await browser.tabs.query({
+        // generally when something is playing audio lets keep it open
+        audible: false,
+        // ignore special
+        pinned: false,
+        // lets not suprise the user by closing the active tab
+        active: false,
+        // lets only concern ourself with normal windows
+        windowType: "normal",
+      }),
+      async (t) => {
+        // filter ignored tabs
+        const cn = await getContainerNameFromCookieStoreId(t.cookieStoreId);
+        for (const el of ignoreRules) {
+          if (el.containerNameMatcher === null) {
+            if (cn === null) {
+              if (el.urlMatcher.test(t.url)) {
+                return false;
+              }
+            }
+            continue;
+          }
+          if (cn === null) {
+            continue;
+          }
+          // both are not null, so lets check
+          if (el.containerNameMatcher.test(cn)) {
+            if (el.urlMatcher.test(t.url)) {
+              return false;
+            }
+          }
+        }
+        return true;
+      },
+    )
+  ).sort((a, b) => {
+    a.lastAccessed - b.lastAccessed;
   });
 
-  const nb_hidden_tabs = all_tabs.filter((i) => i.hidden).length;
+  //console.debug(all_tabs.map( t => t.cookieStoreId + "_" + t.url ));
 
-  let max_nb_of_tabs_to_close =
-    all_tabs.length - nb_hidden_tabs - closeThreshold;
+  let max_nb_of_tabs_to_close = all_tabs.length - closeThreshold;
 
   if (max_nb_of_tabs_to_close < 1) {
     return;
   }
-
-  all_tabs.sort((a, b) => {
-    a.lastAccessed - b.lastAccessed;
-  });
 
   for (const t of all_tabs) {
     // stop when we reach the closeThreshold
@@ -161,35 +190,7 @@ async function tabCleanUp(input) {
       continue;
     }
 
-    // check the ignoreRules
-    let done = false;
     const cn = await getContainerNameFromCookieStoreId(t.cookieStoreId);
-    for (const el of ignoreRules) {
-      if (el.containerNameMatcher === null) {
-        if (cn === null) {
-          if (el.urlMatcher.test(t.url)) {
-            done = true;
-            break;
-          }
-        }
-        continue;
-      }
-      if (cn === null) {
-        continue;
-      }
-      // both are not null, so lets check
-      if (el.containerNameMatcher.test(cn)) {
-        if (el.urlMatcher.test(t.url)) {
-          done = true;
-          break;
-        }
-      }
-    }
-
-    if (done) {
-      continue;
-    }
-
     // check the container
     if (input.containerNameMatcher !== null) {
       if (cn !== null) {
