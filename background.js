@@ -49,7 +49,6 @@ async function rebuildIgnoreRules(
         const containerNameMatcher = left === "" ? null : new RegExp(left);
         const urlMatcher = right === "" ? null : new RegExp(right);
         if (urlMatcher !== null) {
-          //console.debug(containerNameMatcher, urlMatcher);
           ignoreRules.push({ containerNameMatcher, urlMatcher });
         }
       }
@@ -63,7 +62,6 @@ async function rebuildIntervalHandlers(
   intervalrulesStr_time_ms_and_container_regexs,
   intervalrulesStr_url_regexs,
 ) {
-  //console.debug("rebuildIntervalHandlers");
   // now lets rebuild and start the new interval handlers
 
   const time_ms_and_container_regexs =
@@ -78,8 +76,6 @@ async function rebuildIntervalHandlers(
     try {
       let left = time_ms_and_container_regexs[i].trim();
       let right = url_regexs[i].trim();
-
-      //console.debug(left, right);
 
       if (
         !left.startsWith("#") &&
@@ -99,8 +95,6 @@ async function rebuildIntervalHandlers(
         const containerNameMatcher = left === "" ? null : new RegExp(left);
         const urlMatcher = right === "" ? null : new RegExp(right);
 
-        //console.debug(minIdleTimeMilliSecs, containerNameMatcher, urlMatcher);
-
         setIntervalIds.push(
           setInterval(() => {
             tabCleanUp({
@@ -116,37 +110,6 @@ async function rebuildIntervalHandlers(
       console.error(e);
     }
   }
-
-  return;
-  /*intervalrulesStr.split("\n").forEach((line) => {
-    try {
-      line = line.trim();
-      if (line !== "" && !line.startsWith("#")) {
-        const parts = line.split(",");
-
-        const minIdleTimeMilliSecs = parseInt(parts[0].trim());
-        const containerNameMatcher =
-          parts[1].trim() === "" ? null : new RegExp(parts[1].trim());
-        const urlMatcher =
-          parts[2].trim() === "" ? null : new RegExp(parts[2].trim());
-        //const consider_hasText = parts[3].trim()[0] === "y";
-
-        setIntervalIds.push(
-          setInterval(() => {
-            tabCleanUp({
-              minIdleTimeMilliSecs,
-              containerNameMatcher,
-              urlMatcher,
-              //consider_hasText,
-            });
-          }, minIdleTimeMilliSecs),
-        );
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  });
-    */
 }
 
 async function getContainerNameFromCookieStoreId(csid) {
@@ -159,11 +122,7 @@ async function getContainerNameFromCookieStoreId(csid) {
   return null;
 }
 
-// this is run for each rule
-// but since JS is not executed in parallel
-// we should get away with using the global closeThreshold
 async function tabCleanUp(input) {
-  //console.debug('tabCleanUp', input);
   if (!autostart) {
     return;
   }
@@ -171,7 +130,17 @@ async function tabCleanUp(input) {
   // to check idle time
   const epoch_now = new Date().getTime();
 
-  let all_tabs = await browser.tabs.query({});
+  let all_tabs = await browser.tabs.query({
+    // likely used to simulate groups lets ignore them until they become visible
+    hidden: false,
+    // generally when something is playing audio lets keep it open
+    audible: false,
+    // ignore special
+    pinned: false,
+    // lets not suprise the user by closing the active tab
+    active: false,
+    windowType: "normal",
+  });
 
   let max_nb_of_tabs_to_close = all_tabs.length - closeThreshold;
 
@@ -183,26 +152,12 @@ async function tabCleanUp(input) {
     a.lastAccessed - b.lastAccessed;
   });
 
-  //const active_tab = all_tabs.find((t) => t.active === true);
-
   for (const t of all_tabs) {
     // stop when we reach the closeThreshold
     if (max_nb_of_tabs_to_close < 1) {
       continue;
     }
 
-    // ignore tabs to the right of the active_tab
-    /*if (t.index > active_tab.index) {
-      continue;
-    }*/
-
-    // pins are special we assume them to important and ignore them
-    if (t.pinned) {
-      continue;
-    }
-
-    // generally when something is playing audio ... lets keep it open
-    // users can close it themself or it gets closed when the state changes
     if (t.audible) {
       continue;
     }
@@ -278,27 +233,27 @@ async function tabCleanUp(input) {
         if (t.discarded !== false && input.consider_hasText) {
           mightHaveUserInput = await browser.tabs.executeScript(t.id, {
             code: `(function(){
-								let els = document.querySelectorAll('input[type="text"]');
-								for(const el of els) {
-									if (        el.type !== 'hidden' &&
-									   el.style.display !== 'none'   &&
-									    typeof el.value === 'string' &&
-										       el.value !== ''
-									) {
-										return true;
-									}
-								}
-								els = document.querySelectorAll('textarea');
-								for(const el of els) {
-									if( el.style.display !== 'none'   &&
-									     typeof el.value === 'string' &&
-										        el.value !== ''
-									){
-										return true;
-									}
-								}
-								return false;
-							  }());`,
+    let els = document.querySelectorAll('input[type="text"]');
+    for(const el of els) {
+        if (        el.type !== 'hidden' &&
+           el.style.display !== 'none'   &&
+            typeof el.value === 'string' &&
+                   el.value !== ''
+        ) {
+            return true;
+        }
+    }
+    els = document.querySelectorAll('textarea');
+    for(const el of els) {
+        if( el.style.display !== 'none'   &&
+             typeof el.value === 'string' &&
+                    el.value !== ''
+        ){
+            return true;
+        }
+    }
+    return false;
+}());`,
           });
           mightHaveUserInput = mightHaveUserInput[0];
         }
@@ -331,7 +286,6 @@ async function onBAClicked(tab) {
 }
 
 async function onStorageChanged() {
-  //console.debug("onStorageChanged()");
   autostart = await getFromStorage("boolean", "autostart", false);
   saveFolder = await getFromStorage("string", "saveFolder", "unfiled_____");
   closeThreshold = await getFromStorage(
@@ -368,10 +322,8 @@ async function onStorageChanged() {
 
 (async () => {
   await onStorageChanged();
-  //browser.storage.onChanged.addListener(onStorageChanged);
   browser.browserAction.onClicked.addListener(onBAClicked);
   browser.runtime.onMessage.addListener((data, sender) => {
-    //console.debug(data);
     if (data.cmd === "storageChanged") {
       onStorageChanged();
     }
@@ -382,10 +334,4 @@ browser.runtime.onInstalled.addListener(async (details) => {
   if (details.reason === "install") {
     browser.runtime.openOptionsPage();
   }
-  // >>> TODO: remove after v1.8.25
-  else if (details.reason === "update") {
-    setToStorage("autostart", false);
-    browser.runtime.openOptionsPage();
-  }
-  // <<<
 });

@@ -44,10 +44,8 @@
 
     <fieldset>
       <legend>
-        <b>Close Rules</b>
-        <abbr title="Format: CloseTime(ms), Container(regex), URL(regex)"
-          >(?)</abbr
-        >
+        <b>Close Rules </b>
+        <abbr title="Format: CloseTime(MS), Container(RE) | URL(RE)">(?)</abbr>
       </legend>
       <textarea
         id="intervalrules_time_ms_and_container_regex"
@@ -73,7 +71,7 @@
         autocorrect="off"
         autocapitalize="off"
         spellcheck="false"
-        placeholder="# 'URL(regex)'
+        placeholder="# 'URL(RE)'
 # Examples:
 # any http/s URL
 ^https?:\/\/.*
@@ -89,7 +87,7 @@
       <legend>
         <b>Ignore Rules</b>
 
-        <abbr title="Format: Container(regex) | URL(regex)">(?)</abbr>
+        <abbr title="Format: Container(RE) | URL(RE)">(?)</abbr>
       </legend>
       <textarea
         id="ignorerules_container_regex"
@@ -98,7 +96,7 @@
         autocorrect="off"
         autocapitalize="off"
         spellcheck="false"
-        placeholder="# Enter 'Container(regex)' here
+        placeholder="# Enter 'Container(RE)' here
 # Examples:
 #                  := no container
 #  .*              := any container
@@ -113,7 +111,7 @@
         autocorrect="off"
         autocapitalize="off"
         spellcheck="false"
-        placeholder="# Enter 'URL(regex)' here
+        placeholder="# Enter 'URL(RE)' here
 # Examples:
 #  ^https?:\/\/    := any http/s URL
 #  ^about:newtab   := new tab page

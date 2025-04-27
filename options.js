@@ -25,7 +25,6 @@ async function initSaveFolderSelect() {
     out = new Map([...out, ...recGetFolders(node, depth)]);
   }
   for (const [k, v] of out) {
-    //console.debug(k, v.title);
     saveFolder.add(new Option("-".repeat(v.depth) + " " + v.title, k));
   }
 }
@@ -52,7 +51,6 @@ function onChange(evt) {
   }
 
   obj[id] = value;
-  //console.debug(id, value, el.type);
   browser.storage.local.set(obj).catch(console.error);
 }
 
@@ -73,12 +71,8 @@ async function onLoad() {
   ].map(async (id) => {
     try {
       const obj = await browser.storage.local.get(id);
-      //.then((obj) => {
-      //console.debug(id);
       let el = document.getElementById(id);
       let val = obj[id];
-
-      //console.debug('map', id, val);
 
       if (typeof val !== "undefined") {
         if (el.type === "checkbox") {
@@ -87,11 +81,6 @@ async function onLoad() {
           el.value = val;
         }
       }
-      //})
-      //.catch(console.error);
-
-      //let el = document.getElementById(id);
-      //el.addEventListener("input", onChange);
     } catch (e) {
       console.error(e);
     }
@@ -126,7 +115,6 @@ async function onLoad() {
       }
 
       obj[id] = value;
-      //console.debug(id, value, el.type);
       browser.storage.local.set(obj).catch(console.error);
     });
 
