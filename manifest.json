@@ -17,12 +17,11 @@
     "cookies",
     "bookmarks",
     "tabs",
-    "storage",
-    "<all_urls>"
+    "storage"
   ],
   "options_ui": {
     "page": "options.html"
   },
   "incognito": "not_allowed",
-  "version": "1.8.33"
+  "version": "1.8.34"
 }

@@ -138,13 +138,14 @@ async function tabCleanUp(input) {
   let all_tabs = (
     await asyncFilter(
       await browser.tabs.query({
-        // generally when something is playing audio lets keep it open
-        audible: false,
-        // ignore special
-        pinned: false,
-        // lets not suprise the user by closing the active tab
+        // we dont want to suprise users and active tabs have no usable
+        // lastAccessed time anyways
         active: false,
-        // lets only concern ourself with normal windows
+        // ignore audible
+        audible: false,
+        // ignore pinned
+        pinned: false,
+        // care only about normal windows
         windowType: "normal",
       }),
       async (t) => {
@@ -222,61 +223,20 @@ async function tabCleanUp(input) {
       continue;
     }
 
-    if (!t.url.startsWith("http")) {
-      max_nb_of_tabs_to_close--;
-      await browser.tabs.remove(t.id);
-    } else {
-      //
-      try {
-        // check if the tab contains text fields with input
-        let mightHaveUserInput = false;
-        if (t.discarded !== false && input.consider_hasText) {
-          mightHaveUserInput = await browser.tabs.executeScript(t.id, {
-            code: `(function(){
-    let els = document.querySelectorAll('input[type="text"]');
-    for(const el of els) {
-        if (        el.type !== 'hidden' &&
-           el.style.display !== 'none'   &&
-            typeof el.value === 'string' &&
-                   el.value !== ''
-        ) {
-            return true;
-        }
-    }
-    els = document.querySelectorAll('textarea');
-    for(const el of els) {
-        if( el.style.display !== 'none'   &&
-             typeof el.value === 'string' &&
-                    el.value !== ''
-        ){
-            return true;
-        }
-    }
-    return false;
-}());`,
-          });
-          mightHaveUserInput = mightHaveUserInput[0];
-        }
-        if (!mightHaveUserInput) {
-          try {
-            if (typeof saveFolder === "string" && saveFolder !== "") {
-              let createdetails = {
-                title: t.title,
-                url: t.url,
-                parentId: saveFolder,
-              };
-              browser.bookmarks.create(createdetails);
-            }
-          } catch (e) {
-            console.error(e);
-          }
-          await browser.tabs.remove(t.id);
-          max_nb_of_tabs_to_close--;
-        }
-      } catch (e) {
-        console.error(e, t.url);
+    try {
+      if (typeof saveFolder === "string" && saveFolder !== "") {
+        let createdetails = {
+          title: t.title,
+          url: t.url,
+          parentId: saveFolder,
+        };
+        browser.bookmarks.create(createdetails);
       }
+    } catch (e) {
+      console.error(e);
     }
+    await browser.tabs.remove(t.id);
+    max_nb_of_tabs_to_close--;
   }
 }
 
